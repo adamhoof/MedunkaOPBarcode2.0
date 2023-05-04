@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -24,25 +25,33 @@ type SerialConfig struct {
 	Terminator int    `json:"terminator"`
 }
 
-type UpdateServerConfig struct {
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	UploadPath string `json:"uploadPath"`
-	Delimiter  string `json:"delimiter"`
+type ControlAndUpdateServerConfig struct {
+	Host               string `json:"host"`
+	Port               string `json:"port"`
+	FileUploadEndpoint string `json:"fileUploadEndpoint"`
+	Delimiter          string `json:"delimiter"`
+	TableName          string `json:"tableName"`
+	PathToUiStuff      string `json:"pathToUiStuff"`
 }
 type Config struct {
-	Database     DatabaseConfig     `json:"database"`
-	MQTT         MQTTConfig         `json:"mqtt"`
-	Serial       SerialConfig       `json:"serial"`
-	UpdateServer UpdateServerConfig `json:"updateServer"`
+	Database         DatabaseConfig               `json:"database"`
+	MQTT             MQTTConfig                   `json:"mqtt"`
+	Serial           SerialConfig                 `json:"serial"`
+	ControlAndUpdate ControlAndUpdateServerConfig `json:"updateServer"`
 }
 
 func LoadConfig(pathToJsonFile string) (config *Config, err error) {
 	file, err := os.ReadFile(pathToJsonFile)
 	if err != nil {
-		panic("Failed to read .json file, make sure you have this file, check spelling, path to file: " + err.Error())
+		return config, fmt.Errorf("failed to read file:%s %s", "\n",
+			err.Error())
 	}
 
 	err = json.Unmarshal(file, &config)
+	if err != nil {
+		return config, fmt.Errorf("failed to unmarshal into Config struct:%s %s", "\n",
+			err.Error())
+	}
+
 	return config, err
 }
