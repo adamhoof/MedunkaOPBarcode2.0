@@ -1,9 +1,15 @@
 package database
 
-import "database/sql"
+import (
+	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
+	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
+)
 
 type DatabaseHandler interface {
-	Connect(config *string) (err error)
-	ExecuteStatement(statement string) (err error)
-	QueryProductDataRow(query string, barcode string) (row *sql.Row)
+	Connect(conf *config.DatabaseConfig) (err error)
+	Disconnect() (err error)
+	FetchProductData(tableName string, barcode string) (productData *product_data.ProductData, err error)
+	DropTableIfExists(tableName string) (err error)
+	CreateTable(tableName string, tableFields []TableField) (err error)
+	ImportCSV(tableName string, filePath string, delimiter string) (err error)
 }
