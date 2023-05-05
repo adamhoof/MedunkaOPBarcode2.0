@@ -25,19 +25,23 @@ type SerialConfig struct {
 	Terminator int    `json:"terminator"`
 }
 
-type ControlAndUpdateServerConfig struct {
+type HTTPDatabaseUpdateServerConfig struct {
 	Host               string `json:"host"`
 	Port               string `json:"port"`
 	FileUploadEndpoint string `json:"fileUploadEndpoint"`
 	Delimiter          string `json:"delimiter"`
 	TableName          string `json:"tableName"`
-	PathToUiStuff      string `json:"pathToUiStuff"`
+}
+
+type CLIControlAppConfig struct {
+	MDBFileLocation string `json:"mdbFileLocation"`
 }
 type Config struct {
-	Database         DatabaseConfig               `json:"database"`
-	MQTT             MQTTConfig                   `json:"mqtt"`
-	Serial           SerialConfig                 `json:"serial"`
-	ControlAndUpdate ControlAndUpdateServerConfig `json:"updateServer"`
+	Database           DatabaseConfig                 `json:"database"`
+	MQTT               MQTTConfig                     `json:"mqtt"`
+	Serial             SerialConfig                   `json:"serial"`
+	HTTPDatabaseUpdate HTTPDatabaseUpdateServerConfig `json:"updateServer"`
+	CLIControlApp      CLIControlAppConfig            `json:"cliControl"`
 }
 
 func LoadConfig(pathToJsonFile string) (config *Config, err error) {
