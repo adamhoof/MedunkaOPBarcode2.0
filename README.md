@@ -5,7 +5,7 @@ Upgrade and migration of previous repo that is now private.
 ---
 ### What is it for?
 
-#### 1. Speed up goods unpacking for shop owner or employees by providing ["stations"](#), where they can quickly check for product information by scanning it's code.
+#### 1. Speed up goods unpacking for shop owner or employees by providing ["stations"](), where they can quickly check for product information by scanning it's code.
 
 #### 2. Stations also serve as a current product information displayers for customers (when the price changes literary 1x/week, it might come in handy, same with weight changes etc. ...).
 
