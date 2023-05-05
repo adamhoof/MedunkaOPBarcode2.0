@@ -1,1 +1,5 @@
-package http_database_update_server
+package main
+
+func main() {
+
+}
