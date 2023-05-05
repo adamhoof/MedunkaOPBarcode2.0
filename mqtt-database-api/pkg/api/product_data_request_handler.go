@@ -20,7 +20,7 @@ func GetProductData(dbHandler database.DatabaseHandler, conf *config.Config) mqt
 			return
 		}
 
-		productData, err := dbHandler.FetchProductData(conf.ControlAndUpdate.TableName, request.Barcode)
+		productData, err := dbHandler.FetchProductData(conf.HTTPDatabaseUpdate.TableName, request.Barcode)
 		if err != nil {
 			log.Println("failed to fetch product data: ", err)
 			return
