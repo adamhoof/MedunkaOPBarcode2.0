@@ -30,14 +30,13 @@ func main() {
 
 		switch input {
 		case "update":
-			mdbFile, err := findMDBFile(conf.CLIControlApp.MDBFileLocation)
-			if err != nil {
-				log.Fatal(err)
+			if err := fileReadyToBeUsed(conf.CLIControlApp.MDBFileLocation); err != nil {
+				log.Println(err)
 			}
 
-			err = sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, mdbFile)
+			err = sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.CLIControlApp.MDBFileLocation)
 			if err != nil {
-				log.Fatal(err)
+				log.Println(err)
 			}
 		default:
 			fmt.Println("Unknown command. Please try again.")
@@ -45,32 +44,26 @@ func main() {
 	}
 }
 
-func findMDBFile(dirPath string) (string, error) {
-	var mdbFile string
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+func fileReadyToBeUsed(filePath string) error {
+	_, err := os.Stat(filePath)
+	if err == nil {
+		file, err := os.Open(filePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("permission denied: cannot read file at %s", filePath)
 		}
-		if filepath.Ext(path) == ".mdb" {
-			mdbFile = path
-			return filepath.SkipDir
+		if err := file.Close(); err != nil {
+			log.Println("failed to close file")
 		}
 		return nil
-	})
-
-	if err != nil {
-		return "", err
 	}
-
-	if mdbFile == "" {
-		return "", fmt.Errorf("no mdb file found in the specified directory")
+	if os.IsNotExist(err) {
+		return fmt.Errorf("file not found at the specified path: %s", filePath)
 	}
-
-	return mdbFile, nil
+	return err
 }
 
-func sendFileToServer(host string, port string, endpoint string, filePath string) error {
-	file, err := os.Open(filePath)
+func sendFileToServer(host string, port string, endpoint string, fileLocation string) error {
+	file, err := os.Open(fileLocation)
 	if err != nil {
 		return err
 	}
@@ -79,7 +72,7 @@ func sendFileToServer(host string, port string, endpoint string, filePath string
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	part, err := writer.CreateFormFile("file", filepath.Base(fileLocation))
 	if err != nil {
 		return err
 	}
@@ -104,9 +97,15 @@ func sendFileToServer(host string, port string, endpoint string, filePath string
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to upload file: %s", resp.Status)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %v", err)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to upload file: %s\n%s", resp.Status, string(bodyBytes))
+	}
+
+	fmt.Println(string(bodyBytes))
 	return nil
 }
