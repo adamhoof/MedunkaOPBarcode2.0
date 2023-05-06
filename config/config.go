@@ -37,7 +37,8 @@ type HTTPDatabaseUpdateServerConfig struct {
 }
 
 type CLIControlAppConfig struct {
-	MDBFileLocation string `json:"mdbFileLocation"`
+	MDBFileLocation   string `json:"mdbFileLocation"`
+	OutputCSVLocation string `json:"outputCSVLocation"`
 }
 type Config struct {
 	Database           DatabaseConfig                 `json:"database"`

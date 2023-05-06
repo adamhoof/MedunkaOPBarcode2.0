@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/http-database-update-server/pkg/file-parser"
 	"io"
 	"log"
 	"net/http"
@@ -17,15 +16,15 @@ type ErrorAndStatusCode struct {
 	statusCode int
 }
 
-func extractFileFromRequest(request *http.Request, conf *config.Config) (tmpFile *os.File, errorAndStatusCode ErrorAndStatusCode, cleanupFunc func()) {
+func extractFileFromRequest(request *http.Request, conf *config.Config) (errorAndStatusCode ErrorAndStatusCode, cleanupFunc func()) {
 	receivedFile, _, err := request.FormFile("file")
 	if err != nil {
-		return nil, ErrorAndStatusCode{err: fmt.Errorf("failed to read multipart file from request: %s", err), statusCode: http.StatusBadRequest}, nil
+		return ErrorAndStatusCode{err: fmt.Errorf("failed to read multipart file from request: %s", err), statusCode: http.StatusBadRequest}, nil
 	}
 
-	tmpFile, err = os.CreateTemp(conf.HTTPDatabaseUpdate.TempFileLocation, "*.mdb")
+	tmpFile, err := os.CreateTemp(conf.HTTPDatabaseUpdate.TempFileLocation, "*.mdb")
 	if err != nil {
-		return nil, ErrorAndStatusCode{err: fmt.Errorf("failed to create temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
+		return ErrorAndStatusCode{err: fmt.Errorf("failed to create temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
 	}
 
 	if _, err = io.Copy(tmpFile, receivedFile); err != nil {
@@ -35,7 +34,7 @@ func extractFileFromRequest(request *http.Request, conf *config.Config) (tmpFile
 		if errRemove := os.Remove(tmpFile.Name()); errRemove != nil {
 			log.Printf("failed to remove temporary file: %v", errRemove)
 		}
-		return nil, ErrorAndStatusCode{err: fmt.Errorf("failed to write temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
+		return ErrorAndStatusCode{err: fmt.Errorf("failed to write temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
 	}
 
 	cleanupFunc = func() {
@@ -50,27 +49,22 @@ func extractFileFromRequest(request *http.Request, conf *config.Config) (tmpFile
 		}
 	}
 
-	return tmpFile, ErrorAndStatusCode{}, cleanupFunc
+	return ErrorAndStatusCode{}, cleanupFunc
 }
 
 func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var responseBuilder strings.Builder
 
-		file, errorAndStatusCode, cleanupFunc := extractFileFromRequest(r, conf)
+		errorAndStatusCode, cleanupFunc := extractFileFromRequest(r, conf)
 		defer cleanupFunc()
 		if errorAndStatusCode.err != nil {
 			http.Error(w, errorAndStatusCode.err.Error(), errorAndStatusCode.statusCode)
 			return
 		}
-		responseBuilder.WriteString("successfully extracted file from request\n")
 
-		mdbFileParser := file_parser.MDBFileParser{}
-		if err := mdbFileParser.ToCSV(file.Name(), conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
-			http.Error(w, "failed to parse file", http.StatusInternalServerError)
-			return
-		}
-		responseBuilder.WriteString("file parsed successfully\n")
+		responseBuilder.WriteString("successfully extracted file from request\n")
+		responseBuilder.WriteString("successfully downloaded file\n")
 
 		if err := handler.Connect(&conf.Database); err != nil {
 			http.Error(w, "failed to connect to database", http.StatusInternalServerError)

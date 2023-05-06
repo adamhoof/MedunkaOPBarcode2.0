@@ -25,4 +25,5 @@ func main() {
 	if err != nil {
 		log.Fatal("unable to start")
 	}
+	log.Printf("Listening at%s:%s%s", conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint)
 }

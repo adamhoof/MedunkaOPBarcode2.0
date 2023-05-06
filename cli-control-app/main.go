@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
+	file_parser "github.com/adamhoof/MedunkaOPBarcode2.0/file-parser"
 	"io"
 	"log"
 	"mime/multipart"
@@ -13,7 +14,7 @@ import (
 )
 
 func main() {
-	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
+	conf, err := config.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -34,7 +35,13 @@ func main() {
 				log.Println(err)
 			}
 
-			err = sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.CLIControlApp.MDBFileLocation)
+			mdbFileParser := file_parser.MDBFileParser{}
+			if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
+				log.Println("failed to parse mdb to csv: ", err)
+				continue
+			}
+
+			err = sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.HTTPDatabaseUpdate.OutputCSVLocation)
 			if err != nil {
 				log.Println(err)
 			}
@@ -63,6 +70,7 @@ func fileReadyToBeUsed(filePath string) error {
 }
 
 func sendFileToServer(host string, port string, endpoint string, fileLocation string) error {
+
 	file, err := os.Open(fileLocation)
 	if err != nil {
 		return err
