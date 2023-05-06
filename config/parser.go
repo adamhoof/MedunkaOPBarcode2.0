@@ -26,11 +26,14 @@ type SerialConfig struct {
 }
 
 type HTTPDatabaseUpdateServerConfig struct {
-	Host               string `json:"host"`
-	Port               string `json:"port"`
-	FileUploadEndpoint string `json:"fileUploadEndpoint"`
-	Delimiter          string `json:"delimiter"`
-	TableName          string `json:"tableName"`
+	Host                   string `json:"host"`
+	Port                   string `json:"port"`
+	Endpoint               string `json:"endpoint"`
+	Delimiter              string `json:"delimiter"`
+	TableName              string `json:"tableName"`
+	TempFileLocation       string `json:"tempFileLocation"`
+	OutputCSVLocation      string `json:"outputCSVLocation"`
+	ShellMDBParserLocation string `json:"shellMDBFileParser"`
 }
 
 type CLIControlAppConfig struct {
