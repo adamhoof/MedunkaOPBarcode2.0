@@ -17,12 +17,12 @@ func (mdbFileParser *MDBFileParser) ToCSV(inputMDBLocation string, outputCSVLoca
 		log.Fatal(err)
 	}
 
-	cmd := exec.Command(conf.HTTPDatabaseUpdate.ShellMDBParserLocation, inputMDBLocation, outputCSVLocation)
+	cmd := exec.Command(conf.CLIControlApp.ShellMDBParserLocation, inputMDBLocation, outputCSVLocation)
 	var stderr bytes.Buffer
 
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return fmt.Errorf("failed to run mdb_file_parser.sh: " + stderr.String())
 	}
 
