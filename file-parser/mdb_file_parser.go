@@ -3,21 +3,14 @@ package file_parser
 import (
 	"bytes"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
-	"log"
 	"os/exec"
 )
 
 type MDBFileParser struct {
 }
 
-func (mdbFileParser *MDBFileParser) ToCSV(inputMDBLocation string, outputCSVLocation string) (err error) {
-	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	cmd := exec.Command(conf.CLIControlApp.ShellMDBParserLocation, inputMDBLocation, outputCSVLocation)
+func (mdbFileParser *MDBFileParser) ToCSV(inputMDBLocation string, outputCSVLocation string, helperParserLocation string) (err error) {
+	cmd := exec.Command(helperParserLocation, inputMDBLocation, outputCSVLocation)
 	var stderr bytes.Buffer
 
 	cmd.Stderr = &stderr

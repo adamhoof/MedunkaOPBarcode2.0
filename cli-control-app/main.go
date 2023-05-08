@@ -19,7 +19,7 @@ type ResponseContent struct {
 }
 
 func main() {
-	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
+	conf, err := config.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func update(conf *config.Config) error {
 	}
 
 	mdbFileParser := file_parser.MDBFileParser{}
-	if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
+	if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.CLIControlApp.OutputCSVLocation, conf.CLIControlApp.ShellMDBParserLocation); err != nil {
 		return fmt.Errorf("failed to parse mdb to csv: %w", err)
 	}
 

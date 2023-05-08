@@ -6,11 +6,12 @@ import (
 	"github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-database-api/pkg/api"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
+	"os"
 	"time"
 )
 
 func main() {
-	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
+	conf, err := config.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 		return
