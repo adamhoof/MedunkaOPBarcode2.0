@@ -7,11 +7,10 @@ import (
 	"github.com/adamhoof/MedunkaOPBarcode2.0/http-database-update-server/pkg/database-update"
 	"log"
 	"net/http"
-	"os"
 )
 
 func main() {
-	conf, err := config.LoadConfig(os.Args[1])
+	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
 	if err != nil {
 		log.Fatal(err)
 	}

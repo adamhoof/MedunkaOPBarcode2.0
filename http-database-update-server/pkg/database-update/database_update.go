@@ -1,6 +1,7 @@
 package database_update
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
@@ -8,68 +9,78 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 )
 
-type ErrorAndStatusCode struct {
-	err        error
-	statusCode int
+type ErrorResponse struct {
+	Message    string `json:"message"`
+	StatusCode int    `json:"-"`
 }
 
-func extractFileFromRequest(request *http.Request, conf *config.Config) (errorAndStatusCode ErrorAndStatusCode, cleanupFunc func()) {
+func (e ErrorResponse) Error() string {
+	return e.Message
+}
+
+func extractFileFromRequest(request *http.Request, conf *config.Config) (string, error) {
 	receivedFile, _, err := request.FormFile("file")
 	if err != nil {
-		return ErrorAndStatusCode{err: fmt.Errorf("failed to read multipart file from request: %s", err), statusCode: http.StatusBadRequest}, nil
+		return "", ErrorResponse{
+			Message:    fmt.Sprintf("failed to read multipart file from request: %s", err),
+			StatusCode: http.StatusBadRequest,
+		}
 	}
+	defer receivedFile.Close()
 
 	tmpFile, err := os.CreateTemp(conf.HTTPDatabaseUpdate.TempFileLocation, "*.mdb")
 	if err != nil {
-		return ErrorAndStatusCode{err: fmt.Errorf("failed to create temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
+		return "", ErrorResponse{
+			Message:    fmt.Sprintf("failed to create temporary file: %s", err),
+			StatusCode: http.StatusInternalServerError,
+		}
 	}
+	defer tmpFile.Close()
 
 	if _, err = io.Copy(tmpFile, receivedFile); err != nil {
-		if errClose := tmpFile.Close(); errClose != nil {
-			log.Printf("failed to close temporary file: %v", errClose)
-		}
-		if errRemove := os.Remove(tmpFile.Name()); errRemove != nil {
-			log.Printf("failed to remove temporary file: %v", errRemove)
-		}
-		return ErrorAndStatusCode{err: fmt.Errorf("failed to write temporary file: %s", err), statusCode: http.StatusInternalServerError}, nil
-	}
-
-	cleanupFunc = func() {
-		if err = tmpFile.Close(); err != nil {
-			log.Printf("failed to close temporary file: %v", err)
-		}
-		if err = os.Remove(tmpFile.Name()); err != nil {
-			log.Printf("failed to remove temporary file: %v", err)
-		}
-		if err = receivedFile.Close(); err != nil {
-			log.Printf("failed to close received multipart file: %v", err)
+		return "", ErrorResponse{
+			Message:    fmt.Sprintf("failed to write temporary file: %s", err),
+			StatusCode: http.StatusInternalServerError,
 		}
 	}
 
-	return ErrorAndStatusCode{}, cleanupFunc
+	return tmpFile.Name(), nil
+}
+
+func handleError(w http.ResponseWriter, err error) {
+	if err, ok := err.(ErrorResponse); ok {
+		w.WriteHeader(err.StatusCode)
+		json.NewEncoder(w).Encode(err)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Message:    fmt.Sprintf("An unexpected error occurred: %s", err),
+			StatusCode: http.StatusInternalServerError,
+		})
+	}
 }
 
 func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var responseBuilder strings.Builder
+		w.Header().Set("Content-Type", "application/json")
 
-		errorAndStatusCode, cleanupFunc := extractFileFromRequest(r, conf)
-		defer cleanupFunc()
-		if errorAndStatusCode.err != nil {
-			http.Error(w, errorAndStatusCode.err.Error(), errorAndStatusCode.statusCode)
+		tmpFileName, err := extractFileFromRequest(r, conf)
+		if err != nil {
+			handleError(w, err)
 			return
 		}
+		defer os.Remove(tmpFileName)
 
-		responseBuilder.WriteString("successfully extracted file from request\n")
-		responseBuilder.WriteString("successfully downloaded file\n")
-
-		if err := handler.Connect(&conf.Database); err != nil {
-			http.Error(w, "failed to connect to database", http.StatusInternalServerError)
+		if err = handler.Connect(&conf.Database); err != nil {
+			handleError(w, ErrorResponse{
+				Message:    fmt.Sprintf("failed to connect to database: %s", err),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
+		defer handler.Disconnect()
 
 		fields := []database.TableField{
 			{Name: "name", Type: "TEXT"},
@@ -80,33 +91,38 @@ func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseH
 			{Name: "stock", Type: "TEXT"},
 		}
 
-		if err := handler.DropTableIfExists(conf.HTTPDatabaseUpdate.TableName); err != nil {
-			http.Error(w, "failed to drop database table", http.StatusInternalServerError)
+		if err = handler.DropTableIfExists(conf.HTTPDatabaseUpdate.TableName); err != nil {
+			handleError(w, ErrorResponse{
+				Message:    fmt.Sprintf("failed to drop database table: %s", err),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
-		responseBuilder.WriteString("successfully dropped database table\n")
 
-		if err := handler.CreateTable(conf.HTTPDatabaseUpdate.TableName, fields); err != nil {
-			http.Error(w, "failed to create database table", http.StatusInternalServerError)
+		if err = handler.CreateTable(conf.HTTPDatabaseUpdate.TableName, fields); err != nil {
+			handleError(w, ErrorResponse{
+				Message:    fmt.Sprintf("failed to create database table: %s", err),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
-		responseBuilder.WriteString("successfully created database table\n")
 
-		if err := handler.ImportCSV(conf.HTTPDatabaseUpdate.TableName, conf.HTTPDatabaseUpdate.OutputCSVLocation, conf.HTTPDatabaseUpdate.Delimiter); err != nil {
-			http.Error(w, "failed to update database with csv file", http.StatusInternalServerError)
+		if err = handler.ImportCSV(conf.HTTPDatabaseUpdate.TableName, conf.HTTPDatabaseUpdate.OutputCSVLocation, conf.HTTPDatabaseUpdate.Delimiter); err != nil {
+			handleError(w, ErrorResponse{
+				Message:    fmt.Sprintf("failed to update database with csv file: %s", err),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
-		responseBuilder.WriteString("successfully imported csv file as a database table\n")
 
-		if err := handler.Disconnect(); err != nil {
-			http.Error(w, "failed to disconnect from database", http.StatusInternalServerError)
-			return
+		response := struct {
+			Message string `json:"message"`
+		}{
+			Message: "All done!",
 		}
-		responseBuilder.WriteString("successfully disconnected from database\n")
-		responseBuilder.WriteString("All done!")
 
 		w.WriteHeader(http.StatusOK)
-		if _, err := fmt.Fprint(w, responseBuilder.String()); err != nil {
+		if err = json.NewEncoder(w).Encode(response); err != nil {
 			log.Println("failed to write to client")
 		}
 	}
