@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	file_parser "github.com/adamhoof/MedunkaOPBarcode2.0/file-parser"
@@ -13,11 +14,14 @@ import (
 	"path/filepath"
 )
 
+type ResponseContent struct {
+	Message string `json:"message"`
+}
+
 func main() {
-	conf, err := config.LoadConfig(os.Args[1])
+	conf, err := config.LoadConfig("/home/adamhoof/MedunkaOPBarcode2.0/Config.json")
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 
 	for {
@@ -31,18 +35,7 @@ func main() {
 
 		switch input {
 		case "update":
-			if err := fileReadyToBeUsed(conf.CLIControlApp.MDBFileLocation); err != nil {
-				log.Println(err)
-			}
-
-			mdbFileParser := file_parser.MDBFileParser{}
-			if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
-				log.Println("failed to parse mdb to csv: ", err)
-				continue
-			}
-
-			err = sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.HTTPDatabaseUpdate.OutputCSVLocation)
-			if err != nil {
+			if err := update(conf); err != nil {
 				log.Println(err)
 			}
 		default:
@@ -51,6 +44,22 @@ func main() {
 	}
 }
 
+func update(conf *config.Config) error {
+	if err := fileReadyToBeUsed(conf.CLIControlApp.MDBFileLocation); err != nil {
+		return fmt.Errorf("file not ready to be used: %w", err)
+	}
+
+	mdbFileParser := file_parser.MDBFileParser{}
+	if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
+		return fmt.Errorf("failed to parse mdb to csv: %w", err)
+	}
+
+	if err := sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
+		return fmt.Errorf("failed to send file to server: %w", err)
+	}
+
+	return nil
+}
 func fileReadyToBeUsed(filePath string) error {
 	_, err := os.Stat(filePath)
 	if err == nil {
@@ -75,7 +84,12 @@ func sendFileToServer(host string, port string, endpoint string, fileLocation st
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Printf("failed to close file: %s\n", err)
+		}
+	}()
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -101,19 +115,25 @@ func sendFileToServer(host string, port string, endpoint string, fileLocation st
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to do request: %s", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			log.Printf("failed to close response body: %s\n", err)
+		}
+	}()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %v", err)
+		return fmt.Errorf("failed to read response body: %s", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to upload file: %s\n%s", resp.Status, string(bodyBytes))
+	responseContent := ResponseContent{}
+	if err = json.Unmarshal(bodyBytes, &responseContent); err != nil {
+		return fmt.Errorf("failed to parse server response: %s", err)
 	}
 
-	fmt.Println(string(bodyBytes))
+	fmt.Printf("%s\n%s\n", responseContent.Message, resp.Status)
 	return nil
 }
