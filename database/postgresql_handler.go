@@ -36,8 +36,8 @@ func (handler *PostgreSQLHandler) Disconnect() (err error) {
 	return nil
 }
 
-func (handler *PostgreSQLHandler) FetchProductData(tableName string, barcode string) (productData *product_data.ProductData, err error) {
-	row := handler.db.QueryRow(fmt.Sprintf("SELECT name, price, stock, unit_of_measure, unit_of_measure_koef FROM %s WHERE barcode = %s;", tableName, barcode))
+func (handler *PostgreSQLHandler) FetchProductData(tableName string, barcode string) (productData product_data.ProductData, err error) {
+	row := handler.db.QueryRow(fmt.Sprintf("SELECT name, price, stock, unit_of_measure, unit_of_measure_koef FROM %s WHERE barcode = '%s';", tableName, barcode))
 	err = row.Scan(&productData.Name, &productData.Price, &productData.Stock, &productData.UnitOfMeasure, &productData.UnitOfMeasureKoef)
 	if err != nil {
 		log.Printf("unable to unpack row into product data struct: %s", err)
