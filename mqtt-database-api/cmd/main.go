@@ -7,6 +7,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -26,17 +27,16 @@ func main() {
 
 	log.Println("database connected")
 
-	options := mqtt.ClientOptions{
-		ClientID:             "mqtt-database-api",
-		CleanSession:         false,
-		Order:                false,
-		AutoReconnect:        true,
-		ConnectRetryInterval: 2 * time.Second,
-		ConnectRetry:         true,
-	}
+	options := mqtt.NewClientOptions()
 	options.AddBroker(conf.MQTT.ServerAndPort)
+	options.SetClientID("yeet")
+	options.SetAutoReconnect(true)
+	options.SetConnectRetry(true)
+	options.SetCleanSession(false)
+	options.SetConnectRetryInterval(time.Second * 2)
+	options.SetOrderMatters(false)
 
-	mqttClient := mqtt.NewClient(&options)
+	mqttClient := mqtt.NewClient(options)
 
 	for {
 		token := mqttClient.Connect()
@@ -53,4 +53,8 @@ func main() {
 	if token.Error() != nil {
 		log.Fatal(token.Error())
 	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	wg.Wait()
 }

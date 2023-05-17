@@ -23,7 +23,6 @@ func GetProductData(dbHandler database.DatabaseHandler, conf *config.Config) mqt
 		productData, err := dbHandler.FetchProductData(conf.HTTPDatabaseUpdate.TableName, request.Barcode)
 		if err != nil {
 			log.Println("failed to fetch product data: ", err)
-			return
 		}
 
 		if !request.IncludeDiacritics {
