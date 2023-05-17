@@ -26,16 +26,17 @@ type SerialConfig struct {
 }
 
 type HTTPDatabaseUpdateServerConfig struct {
-	Host              string `json:"host"`
-	Port              string `json:"port"`
-	Endpoint          string `json:"endpoint"`
-	Delimiter         string `json:"delimiter"`
-	TableName         string `json:"tableName"`
-	TempFileLocation  string `json:"tempFileLocation"`
-	OutputCSVLocation string `json:"outputCSVLocation"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	Endpoint  string `json:"endpoint"`
+	Delimiter string `json:"delimiter"`
+	TableName string `json:"tableName"`
+	//provide only directory of where to put this db update .csv file (it is created temporary and thus assigned a random name)
+	OutputCSVDirectory string `json:"outputCSVDirectory"`
 }
 
 type CLIControlAppConfig struct {
+	//provide the full path to the files
 	MDBFileLocation        string `json:"mdbFileLocation"`
 	OutputCSVLocation      string `json:"outputCSVLocation"`
 	ShellMDBParserLocation string `json:"shellMDBFileParser"`
