@@ -35,9 +35,14 @@ func extractFileFromRequest(request *http.Request, conf *config.Config) (string,
 		}
 	}()
 
-	tmpFile, err := os.CreateTemp(conf.HTTPDatabaseUpdate.TempFileLocation, "*.mdb")
+	tmpFile, err := os.CreateTemp(conf.HTTPDatabaseUpdate.OutputCSVDirectory, "*.csv")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %s", err)
+	}
+
+	err = tmpFile.Chmod(0666)
+	if err != nil {
+		return "", fmt.Errorf("failed to change permissions of temporary file: %s", err)
 	}
 
 	if _, err = io.Copy(tmpFile, receivedFile); err != nil {
@@ -58,13 +63,13 @@ func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseH
 	return func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		tmpFileLocation, err := extractFileFromRequest(request, conf)
+		updateFileLocation, err := extractFileFromRequest(request, conf)
 		if err != nil {
 			handleError(w, err, http.StatusBadRequest)
 			return
 		}
 		defer func() {
-			err = os.Remove(tmpFileLocation)
+			err = os.Remove(updateFileLocation)
 			if err != nil {
 				log.Printf("failed to remove temporary file: %s\n", err)
 			}
@@ -100,7 +105,7 @@ func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseH
 			return
 		}
 
-		if err = handler.ImportCSV(conf.HTTPDatabaseUpdate.TableName, conf.HTTPDatabaseUpdate.OutputCSVLocation, conf.HTTPDatabaseUpdate.Delimiter); err != nil {
+		if err = handler.ImportCSV(conf.HTTPDatabaseUpdate.TableName, updateFileLocation, conf.HTTPDatabaseUpdate.Delimiter); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
