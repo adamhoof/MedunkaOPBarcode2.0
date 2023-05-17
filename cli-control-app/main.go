@@ -54,7 +54,7 @@ func update(conf *config.Config) error {
 		return fmt.Errorf("failed to parse mdb to csv: %w", err)
 	}
 
-	if err := sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.HTTPDatabaseUpdate.OutputCSVLocation); err != nil {
+	if err := sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.CLIControlApp.OutputCSVLocation); err != nil {
 		return fmt.Errorf("failed to send file to server: %w", err)
 	}
 	return nil
