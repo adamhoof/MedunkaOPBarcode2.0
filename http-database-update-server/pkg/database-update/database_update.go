@@ -3,7 +3,6 @@ package database_update
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
 	"io"
 	"log"
@@ -23,7 +22,7 @@ type SuccessResponse struct {
 	Message string `json:"message"`
 }
 
-func extractFileFromRequest(request *http.Request, conf *config.Config) (string, error) {
+func extractFileFromRequest(request *http.Request) (string, error) {
 	receivedFile, _, err := request.FormFile("file")
 	if err != nil {
 		return "", fmt.Errorf("failed to read multipart file from request: %s", err)
@@ -35,7 +34,7 @@ func extractFileFromRequest(request *http.Request, conf *config.Config) (string,
 		}
 	}()
 
-	tmpFile, err := os.CreateTemp(conf.HTTPDatabaseUpdate.OutputCSVDirectory, "*.csv")
+	tmpFile, err := os.CreateTemp(os.Getenv("CSV_OUTPUT_PATH"), "*.csv")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary file: %s", err)
 	}
@@ -59,11 +58,11 @@ func handleError(w http.ResponseWriter, err error, statusCode int) {
 		log.Printf("failed to encode message into json: %s\n", err)
 	}
 }
-func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseHandler) http.HandlerFunc {
+func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		updateFileLocation, err := extractFileFromRequest(request, conf)
+		updateFileLocation, err := extractFileFromRequest(request)
 		if err != nil {
 			handleError(w, err, http.StatusBadRequest)
 			return
@@ -75,7 +74,14 @@ func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseH
 			}
 		}()
 
-		if err = handler.Connect(&conf.Database); err != nil {
+		connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"))
+
+		if err = handler.Connect(connectionString); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
@@ -95,17 +101,17 @@ func HandleDatabaseUpdateRequest(conf *config.Config, handler database.DatabaseH
 			{Name: "stock", Type: "TEXT"},
 		}
 
-		if err = handler.DropTableIfExists(conf.HTTPDatabaseUpdate.TableName); err != nil {
+		if err = handler.DropTableIfExists(os.Getenv("DB_TABLE_NAME")); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
 
-		if err = handler.CreateTable(conf.HTTPDatabaseUpdate.TableName, fields); err != nil {
+		if err = handler.CreateTable(os.Getenv("DB_TABLE_NAME"), fields); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
 
-		if err = handler.ImportCSV(conf.HTTPDatabaseUpdate.TableName, updateFileLocation, conf.HTTPDatabaseUpdate.Delimiter); err != nil {
+		if err = handler.ImportCSV(os.Getenv("DB_TABLE_NAME"), updateFileLocation, os.Getenv("DB_DELIMITER")); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}

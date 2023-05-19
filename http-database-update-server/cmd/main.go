@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/http-database-update-server/pkg/database-update"
 	"log"
@@ -11,19 +10,13 @@ import (
 )
 
 func main() {
-	conf, err := config.LoadConfig(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	postgreSQLHandler := database.PostgreSQLHandler{}
-	http.HandleFunc(conf.HTTPDatabaseUpdate.Endpoint, database_update.HandleDatabaseUpdateRequest(conf, &postgreSQLHandler))
+	http.HandleFunc(os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), database_update.HandleDatabaseUpdateRequest(&postgreSQLHandler))
 
-	log.Printf("Starting server on %s:%s", conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port)
+	log.Printf("Starting server on %s:%s", "0.0.0.0", os.Getenv("HTTP_SERVER_PORT"))
 
-	err = http.ListenAndServe(fmt.Sprintf("%s:%s", conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port), nil)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%s", "0.0.0.0", os.Getenv("HTTP_SERVER_PORT")), nil)
 	if err != nil {
 		log.Fatal("unable to start")
 	}
-	log.Printf("Listening at%s:%s%s", conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint)
 }
