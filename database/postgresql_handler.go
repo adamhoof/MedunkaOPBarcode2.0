@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
 	_ "github.com/lib/pq"
 	"log"
@@ -14,13 +13,7 @@ type PostgreSQLHandler struct {
 	db *sql.DB
 }
 
-func (handler *PostgreSQLHandler) Connect(conf *config.DatabaseConfig) (err error) {
-	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
-		conf.Host,
-		conf.Port,
-		conf.User,
-		conf.Password,
-		conf.Dbname)
+func (handler *PostgreSQLHandler) Connect(connectionString string) (err error) {
 	handler.db, err = sql.Open("postgres", connectionString)
 	if err != nil {
 		return fmt.Errorf("could not open connection %s", err)
