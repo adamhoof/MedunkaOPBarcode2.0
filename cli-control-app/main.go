@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	file_parser "github.com/adamhoof/MedunkaOPBarcode2.0/file-parser"
 	"io"
 	"log"
@@ -19,42 +18,36 @@ type ResponseContent struct {
 }
 
 func main() {
-	conf, err := config.LoadConfig(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	for {
 		fmt.Print("> ")
 		var input string
-		_, err = fmt.Scanln(&input)
-		if err != nil {
-			fmt.Print(err)
+		if _, err := fmt.Scanln(&input); err != nil {
+			log.Printf("failed to scan line: %s\n", err)
 			continue
 		}
 
 		switch input {
 		case "update":
-			if err = update(conf); err != nil {
+			if err := update(); err != nil {
 				log.Println(err)
 			}
 		default:
-			fmt.Println("Unknown command. Please try again.")
+			log.Printf("invalid command, try again...\n")
 		}
 	}
 }
 
-func update(conf *config.Config) error {
-	if err := fileReadyToBeUsed(conf.CLIControlApp.MDBFileLocation); err != nil {
+func update() error {
+	if err := fileReadyToBeUsed(os.Getenv("MDB_PATH")); err != nil {
 		return fmt.Errorf("file not ready to be used: %w", err)
 	}
 
 	mdbFileParser := file_parser.MDBFileParser{}
-	if err := mdbFileParser.ToCSV(conf.CLIControlApp.MDBFileLocation, conf.CLIControlApp.OutputCSVLocation, conf.CLIControlApp.ShellMDBParserLocation); err != nil {
+	if err := mdbFileParser.ToCSV(os.Getenv("MDB_PATH"), os.Getenv("CSV_OUTPUT_PATH"), os.Getenv("SHELL_MDB_FILE_PARSER_PATH")); err != nil {
 		return fmt.Errorf("failed to parse mdb to csv: %w", err)
 	}
 
-	if err := sendFileToServer(conf.HTTPDatabaseUpdate.Host, conf.HTTPDatabaseUpdate.Port, conf.HTTPDatabaseUpdate.Endpoint, conf.CLIControlApp.OutputCSVLocation); err != nil {
+	if err := sendFileToServer(os.Getenv("HTTP_SERVER_HOST"), os.Getenv("HTTP_SERVER_PORT"), os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), os.Getenv("CSV_OUTPUT_PATH")); err != nil {
 		return fmt.Errorf("failed to send file to server: %w", err)
 	}
 	return nil
