@@ -34,21 +34,21 @@ func extractFileFromRequest(request *http.Request) (string, error) {
 		}
 	}()
 
-	tmpFile, err := os.CreateTemp(os.Getenv("CSV_OUTPUT_PATH"), "*.csv")
+	file, err := os.Create(os.Getenv("HTTP_SERVER_CSV_FILE_PATH"))
 	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %s", err)
+		return "", fmt.Errorf("failed to create file: %s", err)
 	}
 
-	err = tmpFile.Chmod(0666)
+	err = file.Chmod(0666)
 	if err != nil {
-		return "", fmt.Errorf("failed to change permissions of temporary file: %s", err)
+		return "", fmt.Errorf("failed to change permissions of file %s: %s", file.Name(), err)
 	}
 
-	if _, err = io.Copy(tmpFile, receivedFile); err != nil {
-		return "", fmt.Errorf("failed to write temporary file: %s", err)
+	if _, err = io.Copy(file, receivedFile); err != nil {
+		return "", fmt.Errorf("failed to write file %s: %s", file.Name(), err)
 	}
 
-	return tmpFile.Name(), nil
+	return file.Name(), nil
 }
 
 func handleError(w http.ResponseWriter, err error, statusCode int) {
@@ -62,24 +62,24 @@ func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerF
 	return func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		updateFileLocation, err := extractFileFromRequest(request)
+		fileLocation, err := extractFileFromRequest(request)
 		if err != nil {
 			handleError(w, err, http.StatusBadRequest)
 			return
 		}
 		defer func() {
-			err = os.Remove(updateFileLocation)
+			err = os.Remove(fileLocation)
 			if err != nil {
-				log.Printf("failed to remove temporary file: %s\n", err)
+				log.Printf("failed to remove file: %s\n", err)
 			}
 		}()
 
 		connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			os.Getenv("DB_HOST"),
-			os.Getenv("DB_PORT"),
-			os.Getenv("DB_USER"),
-			os.Getenv("DB_PASSWORD"),
-			os.Getenv("DB_NAME"))
+			os.Getenv("POSTGRES_HOSTNAME"),
+			os.Getenv("POSTGRES_PORT"),
+			os.Getenv("POSTGRES_USER"),
+			os.Getenv("POSTGRES_PASSWORD"),
+			os.Getenv("POSTGRES_DB"))
 
 		if err = handler.Connect(connectionString); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerF
 			return
 		}
 
-		if err = handler.ImportCSV(os.Getenv("DB_TABLE_NAME"), updateFileLocation, os.Getenv("DB_DELIMITER")); err != nil {
+		if err = handler.ImportCSV(os.Getenv("DB_TABLE_NAME"), fileLocation, os.Getenv("DB_DELIMITER")); err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
