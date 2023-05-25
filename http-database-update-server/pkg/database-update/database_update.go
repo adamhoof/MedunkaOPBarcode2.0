@@ -74,7 +74,7 @@ func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerF
 			}
 		}()
 
-		connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
+		connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 			os.Getenv("DB_HOST"),
 			os.Getenv("DB_PORT"),
 			os.Getenv("DB_USER"),

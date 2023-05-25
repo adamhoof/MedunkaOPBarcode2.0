@@ -40,5 +40,5 @@ COPY --from=builder /app/file-parser ./file-parser
 
 CMD ["/bin/bash"]
 
-#sudo docker run -it --network=whales-network -v /home/adamhoof/Desktop/:/app/mdb -e MDB_PATH=/app/mdb/67668305_2022.mdb -e CSV_OUTPUT_PATH=/app/output.csv -e SHELL_MDB_FILE_PARSER_PATH=./file-parser/mdb_file_parser.sh --env-file ./env.list test-cli-control
+#sudo docker run -it --network=medunkaopbarcode20_default -v /home/adamhoof/Desktop/:/app/mdb -e MDB_PATH=/app/mdb/67668305_2022.mdb -e CSV_OUTPUT_PATH=/app/output.csv -e SHELL_MDB_FILE_PARSER_PATH=./file-parser/mdb_file_parser.sh --env-file ./env.list test-cli-control
 #sudo docker  build -t test-cli-control -f ./cli-control-app/Dockerfile .

@@ -1,0 +1,27 @@
+version: '3'
+services:
+  #  mqtt_database_api:
+  #   build: ./path_to_mqtt_database_api_directory
+  #  volumes:
+  #   - ./path_to_mqtt_database_api_directory:/app
+  # depends_on:
+  #  - db
+  http_database_update_server:
+    build:
+      context: .
+      dockerfile: ./http-database-update-server/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    env_file: env.list
+  db:
+    image: postgres:14.7
+    command: -c ssl=off
+    env_file: env.list
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+volumes:
+  postgres_data:

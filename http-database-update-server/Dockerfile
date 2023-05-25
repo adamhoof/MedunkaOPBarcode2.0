@@ -31,12 +31,9 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
 
-# Expose port 8080 to the outside
-EXPOSE 8080
-
 # Command to run the executable
-#CMD ["./main"]
-CMD ["/bin/sh"]
+CMD ["./main"]
+#CMD ["/bin/sh"]
 
 #sudo docker  build -t test-http-database-update-server -f ./http-database-update-server/Dockerfile .
 #sudo docker run -it -e CSV_OUTPUT_PATH=/app/output.csv --env-file ./env.list --network=whales-network -d test-http-database-update-server
