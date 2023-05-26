@@ -1,11 +1,5 @@
 version: '3'
 services:
-  #  mqtt_database_api:
-  #   build: ./path_to_mqtt_database_api_directory
-  #  volumes:
-  #   - ./path_to_mqtt_database_api_directory:/app
-  # depends_on:
-  #  - db
   http_database_update_server:
     build:
       context: .
@@ -17,6 +11,8 @@ services:
     env_file: env.list
     volumes:
       - shared_data:/tmp
+    networks:
+      - MOB_network
   db:
     image: postgres:14.7
     command: -c ssl=off
@@ -24,8 +20,36 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - postgres_data:/var/lib/postgresql/data
       - shared_data:/tmp
+    networks:
+      - MOB_network
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto_config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+      - ./mosquitto-config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - MOB_network
+  mqtt_database_api:
+    build:
+      context: .
+      dockerfile: ./mqtt-database-api/Dockerfile
+    depends_on:
+      - db
+      - mosquitto
+    networks:
+      - MOB_network
+    env_file: env.list
 volumes:
   postgres_data:
   shared_data:
+  mosquitto_config:
+  mosquitto_data:
+  mosquitto_log:
+networks:
+  MOB_network:

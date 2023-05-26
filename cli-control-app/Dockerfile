@@ -16,6 +16,7 @@ RUN go mod download
 # Copy the source from the current directory to the Working Directory inside the container
 COPY ./cli-control-app .
 COPY ./file-parser ./file-parser
+COPY ./product-data ./product-data
 
 # Install mdb-tools
 RUN apt-get update && apt-get install -y mdbtools
