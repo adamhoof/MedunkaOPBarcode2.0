@@ -3,15 +3,15 @@ package api
 import (
 	"encoding/json"
 	godiacritics "github.com/Regis24GmbH/go-diacritics"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/config"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
 	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
+	"os"
 	"time"
 )
 
-func GetProductData(dbHandler database.DatabaseHandler, conf *config.Config) mqtt.MessageHandler {
+func GetProductData(dbHandler database.DatabaseHandler) mqtt.MessageHandler {
 	return func(mqttClient mqtt.Client, message mqtt.Message) {
 		var request product_data.ProductDataRequest
 		err := json.Unmarshal(message.Payload(), &request)
@@ -20,7 +20,7 @@ func GetProductData(dbHandler database.DatabaseHandler, conf *config.Config) mqt
 			return
 		}
 
-		productData, err := dbHandler.FetchProductData(conf.HTTPDatabaseUpdate.TableName, request.Barcode)
+		productData, err := dbHandler.FetchProductData(os.Getenv("DB_TABLE_NAME"), request.Barcode)
 		if err != nil {
 			log.Println("failed to fetch product data: ", err)
 		}
