@@ -53,11 +53,11 @@ func main() {
 		if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 			break
 		}
-		log.Println("handlers client failed to connect, retrying...", token.Error())
+		log.Println("mqtt client failed to connect, retrying...", token.Error())
 		time.Sleep(5 * time.Second)
 
 	}
-	log.Println("handlers client connected")
+	log.Println("mqtt client connected")
 
 	mqttClient.Subscribe(os.Args[2], 0, mqtt_handlers.ProductDataResponseHandler())
 
