@@ -1,3 +1,8 @@
 .idea
 Config.json
 env.list
+a.out
+op-barcode-esp32/build
+op-barcode-esp32/cmake-build-debug
+op-barcode-esp32/sdkconfig
+op-barcode-esp32/sdkconfig.old

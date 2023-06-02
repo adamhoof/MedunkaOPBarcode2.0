@@ -1,0 +1,19 @@
+menu "MQTT configuration"
+
+    config MQTT_BROKER_ADDRESS_AND_PORT
+        string "Broker address and port"
+        default "address:port"
+        help
+            URL and port of the broker to connect to
+
+endmenu
+
+menu "WiFi configuration"
+
+    config WIFI_SSID
+    string "WiFi SSID"
+
+    config WIFI_PASSWORD
+    string "WiFi password"
+
+endmenu
