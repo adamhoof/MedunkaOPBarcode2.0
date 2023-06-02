@@ -3,7 +3,7 @@ package mqtt_handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/op-bardoce-rpi/pkg/cli_artist"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/op-barcode-rpi/pkg/cli_artist"
 	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
