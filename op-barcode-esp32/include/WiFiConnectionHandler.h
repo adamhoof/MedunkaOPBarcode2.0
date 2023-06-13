@@ -5,11 +5,12 @@
 
 class WiFiConnectionHandler {
 private:
-    std::string ssid;
-    std::string password;
+    const char* ssid;
+    const char* password;
+    const char* clientName;
 
 public:
-    WiFiConnectionHandler(const char* ssid, const char* password);
+    WiFiConnectionHandler(const char* clientName, const char* ssid, const char* password);
 
     bool connect();
     void disconnect();

@@ -1,12 +1,14 @@
 #include "WiFiConnectionHandler.h"
 
-WiFiConnectionHandler::WiFiConnectionHandler(const char* ssid, const char* password) : ssid(ssid), password(password)
+WiFiConnectionHandler::WiFiConnectionHandler(const char* clientName, const char* ssid, const char* password) : ssid(ssid), password(password)
 {}
 
 bool WiFiConnectionHandler::connect()
 {
     if (!WiFi.isConnected()) {
-        WiFi.begin(this->ssid.c_str(), this->password.c_str());
+        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE, INADDR_NONE);
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, this->clientName);
+        WiFi.begin(this->ssid, this->password);
     }
 
     for (int i = 0; i < 25; ++i) {
