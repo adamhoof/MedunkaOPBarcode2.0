@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <SPI.h>
 #include <Adafruit_ILI9341.h>
+#include "RequestSerializer.h"
 
 #define TX 15
 #define RX 13
@@ -44,9 +45,8 @@ void setup()
 void loop()
 {
     if (barcodeReader.dataPresent()) {
-        Barcode barcode = barcodeReader.readUntilDelimiter(DELIMITER);
-        for (int i = 0; i < strlen(barcode.data()); ++i) {
-            Serial.print(barcode[i]);
-        }
+        Barcode barcode {};
+        barcodeReader.readUntilDelimiter(DELIMITER, barcode);
+
     }
 }

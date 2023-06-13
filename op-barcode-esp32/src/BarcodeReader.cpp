@@ -15,9 +15,8 @@ bool BarcodeReader::dataPresent()
     return softwareSerial.available() > 0;
 }
 
-Barcode BarcodeReader::readUntilDelimiter(int8_t delimiter)
+void BarcodeReader::readUntilDelimiter(int8_t delimiter, Barcode& barcode)
 {
-    uint8_t numBytes = softwareSerial.readBytesUntil(delimiter, barcodeBuffer.data(), barcodeBuffer.size());
-    barcodeBuffer[numBytes] = '\0';
-    return barcodeBuffer;
+    uint8_t numBytes = softwareSerial.readBytesUntil(delimiter, barcode.data(), barcode.size());
+    barcode[numBytes] = '\0';
 }

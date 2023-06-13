@@ -2,7 +2,7 @@
 
 #include <SoftwareSerial.h>
 
-typedef const std::array<char, 30>& Barcode;
+typedef std::array<char, 30> Barcode;
 
 class BarcodeReader
 {
@@ -18,5 +18,5 @@ public:
 
     bool dataPresent();
 
-    Barcode readUntilDelimiter(int8_t delimiter);
+    void readUntilDelimiter(int8_t delimiter, Barcode& barcode);
 };
