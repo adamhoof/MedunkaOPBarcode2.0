@@ -2,7 +2,7 @@
 
 
 BarcodeReader::BarcodeReader(uint32_t baudRate, int8_t txPin, int8_t rxPin)
-        : barcodeBuffer {}, txPin(txPin), rxPin(rxPin), baudRate(baudRate)
+        : txPin(txPin), rxPin(rxPin), baudRate(baudRate)
 {}
 
 void BarcodeReader::init()
@@ -19,4 +19,28 @@ void BarcodeReader::readUntilDelimiter(int8_t delimiter, Barcode& barcode)
 {
     uint8_t numBytes = softwareSerial.readBytesUntil(delimiter, barcode.data(), barcode.size());
     barcode[numBytes] = '\0';
+}
+
+void BarcodeReader::lightOn()
+{
+    softwareSerial.write(turnOnLight.data(), turnOnLight.size());
+    delay(100);
+    softwareSerial.write(saveToFlash.data(), saveToFlash.size());
+    delay(200);
+    softwareSerial.write(deepSleep.data(), deepSleep.size());
+    delay(1000);
+    softwareSerial.write(wakeUpModule.data(), wakeUpModule.size());
+    delay(3000);
+}
+
+void BarcodeReader::lightOff()
+{
+    softwareSerial.write(turnOffLight.data(), turnOffLight.size());
+    delay(100);
+    softwareSerial.write(saveToFlash.data(), saveToFlash.size());
+    delay(200);
+    softwareSerial.write(deepSleep.data(), deepSleep.size());
+    delay(1000);
+    softwareSerial.write(wakeUpModule.data(), wakeUpModule.size());
+    delay(3000);
 }
