@@ -15,4 +15,4 @@ struct Response {
     double unitOfMeasureKoef;
 };
 
-DeserializationStatus deserializeResponse(const byte* buffer, Response* const response);
+DeserializationStatus deserializeResponse(const byte* const input, Response* const response);

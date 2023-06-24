@@ -1,6 +1,6 @@
 #include "ResponseDeserializer.h"
 
-DeserializationStatus deserializeResponse(const byte* buffer, Response* const response)
+DeserializationStatus deserializeResponse(const byte* const input, Response* const response)
 {
     StaticJsonDocument<350> jsonResponse;
     response->name = jsonResponse["Name"];
@@ -8,7 +8,7 @@ DeserializationStatus deserializeResponse(const byte* buffer, Response* const re
     response->stock = jsonResponse["Stock"];
     response->unitOfMeasure = jsonResponse["UnitOfMeasure"];
     response->unitOfMeasureKoef = jsonResponse["UnitOfMeasureKoef"];
-    DeserializationError error = deserializeJson(jsonResponse, buffer);
+    DeserializationError error = deserializeJson(jsonResponse, input);
     if (error != DeserializationError::Ok ) {
         return DESERIALIZATION_FAILED;
     }
