@@ -7,8 +7,26 @@ import (
 	"log"
 )
 
+type Command struct {
+	name        string
+	description string
+}
+
+func printAllCommands(availableCommands []Command) {
+	for _, command := range availableCommands {
+		fmt.Printf("%s: %s\n", command.name, command.description)
+	}
+}
+
 func main() {
 	var input string
+
+	availableCommands := []Command{
+		{"ls", "list all available commands with their description"},
+		{"update", "update database table containing product info"},
+		{"mqttTest", "test out mqtt connection by sending sample product data request"},
+		{"controlDevice", "control specific device (command prompts for name of device later)"},
+	}
 
 	for {
 		fmt.Print("HekrMejMej > ")
@@ -32,6 +50,8 @@ func main() {
 			}
 			// TODO search for device, if it does exist, enter function
 			device_controller.EnterDeviceControlMode(input)
+		case "ls":
+			printAllCommands(availableCommands)
 		default:
 			log.Printf("invalid command, try again...\n")
 		}
