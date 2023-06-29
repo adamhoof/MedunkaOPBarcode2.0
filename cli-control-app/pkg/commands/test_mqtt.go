@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	mqtt_client "github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-client"
 	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
@@ -9,30 +10,11 @@ import (
 	"time"
 )
 
-func MQTTRequestTest() {
-	options := mqtt.NewClientOptions()
-	options.AddBroker(os.Getenv("MQTT_SERVER_AND_PORT"))
-	options.SetClientID("mqtt_test")
-	options.SetAutoReconnect(true)
-	options.SetConnectRetry(true)
-	options.SetCleanSession(false)
-	options.SetConnectRetryInterval(time.Second * 2)
-	options.SetOrderMatters(false)
+func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacritics bool) {
+	mqttClient := mqtt_client.CreateDefault(clientTopic)
+	mqtt_client.ConnectDefault(&mqttClient)
 
-	mqttClient := mqtt.NewClient(options)
-
-	for {
-		token := mqttClient.Connect()
-		if token.WaitTimeout(5*time.Second) && token.Error() == nil {
-			break
-		}
-		log.Println("mqtt client failed to connect, retrying...", token.Error())
-		time.Sleep(5 * time.Second)
-	}
-
-	log.Println("mqtt client connected")
-
-	token := mqttClient.Subscribe("/test_topic", 0, func(client mqtt.Client, message mqtt.Message) {
+	token := mqttClient.Subscribe(clientTopic, 0, func(client mqtt.Client, message mqtt.Message) {
 		log.Printf("Received request at topic: %s\n", message.Topic())
 		var productData product_data.ProductData
 		err := json.Unmarshal(message.Payload(), &productData)
@@ -47,9 +29,9 @@ func MQTTRequestTest() {
 	}
 
 	productData := product_data.ProductDataRequest{
-		ClientTopic:       "/test_topic",
-		Barcode:           "8595020340103",
-		IncludeDiacritics: true,
+		ClientTopic:       clientTopic,
+		Barcode:           barcode,
+		IncludeDiacritics: includeDiacritics,
 	}
 
 	productDataAsJson, err := json.Marshal(&productData)
