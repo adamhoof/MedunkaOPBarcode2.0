@@ -38,13 +38,13 @@ func EnterDeviceControlMode(deviceName string) {
 		case "ls":
 			printAllCommands(availableCommands)
 		case "lightOn":
-			commands.TurnOn(deviceName)
+			commands.TurnOnLight(deviceName)
 		//send mqtt command
 		case "lightOff":
-			commands.TurnOff(deviceName)
+			commands.TurnOffLight(deviceName)
 			//send mqtt command
 		case "firmwareUpdate":
-			commands.UpdateDeviceFirmware(deviceName)
+			commands.UpdateFirmware(deviceName)
 			//send mqtt command
 		case "exit":
 			fmt.Printf("It was pleasure to communicate, your %s\n", deviceName)

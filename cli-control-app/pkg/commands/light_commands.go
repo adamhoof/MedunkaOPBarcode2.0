@@ -1,9 +1,9 @@
 package commands
 
-func TurnOn(deviceName string) {
+func TurnOnLight(deviceName string) {
 
 }
 
-func TurnOff(deviceName string) {
+func TurnOffLight(deviceName string) {
 
 }
