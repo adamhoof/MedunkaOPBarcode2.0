@@ -17,6 +17,7 @@ RUN go mod download
 COPY ./cli-control-app ./cli-control-app
 COPY ./file-parser ./file-parser
 COPY ./product-data ./product-data
+COPY ./mqtt-client ./mqtt-client
 
 # Install mdb-tools
 RUN apt-get update && apt-get install -y mdbtools

@@ -13,6 +13,7 @@ RUN go mod download
 COPY ./mqtt-database-api ./mqtt-database-api
 COPY ./database ./database
 COPY ./product-data ./product-data
+COPY ./mqtt-client ./mqtt-client
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
 
