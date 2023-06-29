@@ -1,6 +1,6 @@
 #include "WiFiConnectionHandler.h"
 
-WiFiConnectionHandler::WiFiConnectionHandler(const char* clientName, const char* ssid, const char* password) : ssid(ssid), password(password)
+WiFiConnectionHandler::WiFiConnectionHandler(const char* clientName, const char* ssid, const char* password) : clientName(clientName), ssid(ssid), password(password)
 {}
 
 bool WiFiConnectionHandler::connect()
