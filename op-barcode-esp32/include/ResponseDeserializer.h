@@ -7,7 +7,7 @@ enum DeserializationStatus {
     DESERIALIZATION_OK, DESERIALIZATION_FAILED
 };
 
-struct Response {
+struct ProductDataResponse {
     const char* name;
     double price;
     uint16_t stock;
@@ -15,4 +15,4 @@ struct Response {
     double unitOfMeasureKoef;
 };
 
-DeserializationStatus deserializeResponse(const byte* const input, Response* const response);
+DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse* const response);

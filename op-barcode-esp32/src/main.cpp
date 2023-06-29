@@ -9,6 +9,7 @@
 #include "RequestSerializer.h"
 #include "ResponseDeserializer.h"
 #include <PubSubClient.h>
+#include <OTAHandler.h>
 
 #define TX 15
 #define RX 13
@@ -28,20 +29,27 @@ Adafruit_ILI9341 display(CS, DC, RST);
 DisplayController displayController(display);
 
 
-bool receivedMessage = false;
+bool receivedProductData = false;
 bool finishedPrinting = true;
+bool firmwareUpdateAwaiting = false;
 
-Response* response;
+const char* firmwareUpdateTopic = "/firmware_update";
+const char* productDataRequestTopic = "/get_product_data";
+
+ProductDataResponse* response;
 
 void messageHandler(char* topic, const byte* payload, unsigned int length)
 {
-    while (!finishedPrinting) {
-        delay(100);
+    if (strstr(topic, productDataRequestTopic) != nullptr) {
+        while (!finishedPrinting) {
+            delay(100);
+        }
+        deserializeProductDataResponse(payload, response);
+        receivedProductData = true;
+
+    } else if (strstr(topic, firmwareUpdateTopic) != nullptr) {
+        firmwareUpdateAwaiting = !firmwareUpdateAwaiting;
     }
-
-    deserializeResponse(payload, response);
-
-    receivedMessage = true;
 }
 
 static void WiFiDisconnectHandler(arduino_event_id_t eventId)
@@ -61,7 +69,7 @@ static void WiFiConnectHandler(arduino_event_id_t eventId)
 void setup()
 {
     Serial.begin(115200);
-    response = new Response;
+    response = new ProductDataResponse;
 
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_CONNECTED, WiFiConnectHandler);
     if (!wifiConnectionHandler.connect()) {
@@ -69,7 +77,7 @@ void setup()
     }
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, WiFiDisconnectHandler);
 
-    barcodeReader.init();
+    /*barcodeReader.init();*/
 
     mqttClient.setServer(mqttServer, mqttPort);
     mqttClient.setClient(wiFiClient);
@@ -81,23 +89,36 @@ void setup()
 
 void loop()
 {
-     mqttClient.loop();
+    while (!WiFi.isConnected()) {
+        delay(10);
+    }
+    mqttClient.loop();
 
-     if (receivedMessage) {
-         //print
-     }
+    if (receivedProductData) {
+        //print
+    }
 
-     if (barcodeReader.dataPresent()) {
-         Barcode barcode {};
-         barcodeReader.readUntilDelimiter(DELIMITER, barcode);
+   /* if (barcodeReader.dataPresent()) {
+        Barcode barcode {};
+        barcodeReader.readUntilDelimiter(DELIMITER, barcode);
 
-         for (const char& charie: barcode) {
-             Serial.println(charie);
-         }
-         SerializedRequestBuffer buffer;
-         if (serialize(Request {.barcode = barcode.data(), .responseTopic = (std::string (clientName) + "/get_product_data").c_str(), .includeDiacritics = false},
-                       buffer) == SERIALIZATION_FAILED) {
-             //pee pee poo poo
-         }
-     }
+        for (const char& charie: barcode) {
+            Serial.println(charie);
+        }
+        SerializedRequestBuffer buffer;
+        if (serializeProductDataRequest(ProductDataRequest {.barcode = barcode.data(), .responseTopic = (std::string(clientName) +
+                                                                            productDataRequestTopic).c_str(), .includeDiacritics = false},
+                      buffer) == SERIALIZATION_FAILED) {
+            // serialization failed, do something
+        }
+        mqttClient.publish(productDataRequestTopic, buffer.data(), false);
+    }*/
+
+    if (firmwareUpdateAwaiting) {
+        OTAHandler::init();
+        OTAHandler::setEvents();
+        while (firmwareUpdateAwaiting) {
+            OTAHandler::maintainConnection();
+        }
+    }
 }

@@ -9,11 +9,11 @@ enum SerializationStatus {
     SERIALIZATION_OK, SERIALIZATION_FAILED
 };
 
-struct Request
+struct ProductDataRequest
 {
     const char* barcode;
     const char* responseTopic;
     bool includeDiacritics;
 };
 
-SerializationStatus serialize(const Request& requestToSerialize, SerializedRequestBuffer& serializedRequest);
+SerializationStatus serializeProductDataRequest(const ProductDataRequest& requestToSerialize, SerializedRequestBuffer& serializedRequest);

@@ -1,6 +1,6 @@
 #include "ResponseDeserializer.h"
 
-DeserializationStatus deserializeResponse(const byte* const input, Response* const response)
+DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse* const response)
 {
     StaticJsonDocument<350> jsonResponse;
     response->name = jsonResponse["Name"];

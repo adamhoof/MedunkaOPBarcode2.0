@@ -1,6 +1,6 @@
 #include "RequestSerializer.h"
 
-SerializationStatus serialize(const Request& requestToSerialize, SerializedRequestBuffer& serializedRequest)
+SerializationStatus serializeProductDataRequest(const ProductDataRequest& requestToSerialize, SerializedRequestBuffer& serializedRequest)
 {
     StaticJsonDocument<200> jsonDoc;
     jsonDoc["ClientTopic"] = requestToSerialize.responseTopic;
