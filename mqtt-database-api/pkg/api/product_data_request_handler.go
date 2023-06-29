@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func GetProductData(dbHandler database.DatabaseHandler) mqtt.MessageHandler {
+func HandleProductDataRequest(dbHandler database.DatabaseHandler) mqtt.MessageHandler {
 	return func(mqttClient mqtt.Client, message mqtt.Message) {
 		var request product_data.ProductDataRequest
 		err := json.Unmarshal(message.Payload(), &request)
@@ -37,7 +37,7 @@ func GetProductData(dbHandler database.DatabaseHandler) mqtt.MessageHandler {
 		}
 
 		for {
-			token := mqttClient.Publish(request.ClientTopic, 0, false, productDataAsJson)
+			token := mqttClient.Publish(request.ClientTopic, 1, false, productDataAsJson)
 			if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 				break
 			}

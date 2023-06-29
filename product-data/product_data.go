@@ -6,7 +6,6 @@ type ProductData struct {
 	Stock             string
 	UnitOfMeasure     string
 	UnitOfMeasureKoef string
-	FirmwareUpdate    bool
 }
 
 type ProductDataRequest struct {
