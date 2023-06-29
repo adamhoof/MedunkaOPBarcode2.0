@@ -41,7 +41,7 @@ func main() {
 				log.Println(err)
 			}
 		case "mqttTest":
-			commands.MQTTRequestTest()
+			commands.MQTTProductDataRequestTest("mqtt_test", "8595020340103", true)
 		case "controlDevice":
 			fmt.Print("Which device do you want to control?: ")
 			if _, err := fmt.Scanln(&input); err != nil {
