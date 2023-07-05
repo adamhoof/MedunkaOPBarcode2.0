@@ -15,4 +15,10 @@ struct ProductDataResponse {
     double unitOfMeasureKoef;
 };
 
+struct LightCommandData{
+    bool state;
+};
+
 DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse* const response);
+
+DeserializationStatus deserializeLightCommand(const byte* const input, bool& status);

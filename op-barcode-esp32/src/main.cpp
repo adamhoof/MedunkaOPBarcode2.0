@@ -33,9 +33,10 @@ bool receivedProductData = false;
 bool finishedPrinting = true;
 bool firmwareUpdateAwaiting = false;
 
-const char* firmwareUpdateTopic = "/firmware_update";
-const char* productDataRequestTopic = "/get_product_data";
+const char* const firmwareUpdateTopic = "/firmware_update";
+const char* const productDataRequestTopic = "/get_product_data";
 const std::string productDataResponseTopic = std::string(clientName) + productDataRequestTopic;
+const char* const lightCommandTopic = "/light";
 
 ProductDataResponse* response;
 
@@ -50,6 +51,13 @@ void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
 
     } else if (strstr(topic, firmwareUpdateTopic) != nullptr) {
         firmwareUpdateAwaiting = !firmwareUpdateAwaiting;
+
+    } else if (strstr(topic, lightCommandTopic)) {
+        bool requestedLightStatus = true;
+        deserializeLightCommand(payload, requestedLightStatus);
+        requestedLightStatus == true ? barcodeReader.lightOn() : barcodeReader.lightOff();
+    } else {
+
     }
 }
 
@@ -66,10 +74,12 @@ static void WiFiConnectHandler(arduino_event_id_t eventId)
     Serial.printf("Connected to %s!\n", ssid);
 }
 
-bool productDataRequestSuccessful(const char* const requestTopic, const SerializedProductDataRequestBuffer& buffer, uint8_t maxPublishRetries, uint32_t publishDelay) {
+bool productDataRequestSuccessful(const char* const requestTopic, const SerializedProductDataRequestBuffer& buffer,
+                                  uint8_t maxPublishRetries, uint32_t publishDelay)
+{
     uint8_t publishRetries = 0;
     while (publishRetries < maxPublishRetries) {
-        if (mqttClient.publish(requestTopic, buffer.data(), false)){
+        if (mqttClient.publish(requestTopic, buffer.data(), false)) {
             break;
         }
         delay(publishDelay);
@@ -81,7 +91,6 @@ bool productDataRequestSuccessful(const char* const requestTopic, const Serializ
     }
     return true;
 }
-
 
 void setup()
 {
@@ -134,7 +143,7 @@ void loop()
                 requestBuffer) == SERIALIZATION_FAILED) {
             // serialization failed, print to display
         }
-        if (!productDataRequestSuccessful(productDataRequestTopic, requestBuffer, 5, 100)){
+        if (!productDataRequestSuccessful(productDataRequestTopic, requestBuffer, 5, 100)) {
             // print to display
         }
     }
