@@ -3,7 +3,7 @@
 #include <array>
 #include <ArduinoJson.h>
 
-typedef std::array<char, 200> SerializedRequestBuffer;
+typedef std::array<char, 200> SerializedProductDataRequestBuffer;
 
 enum SerializationStatus {
     SERIALIZATION_OK, SERIALIZATION_FAILED
@@ -16,4 +16,4 @@ struct ProductDataRequest
     bool includeDiacritics;
 };
 
-SerializationStatus serializeProductDataRequest(const ProductDataRequest& requestToSerialize, SerializedRequestBuffer& serializedRequest);
+SerializationStatus serializeProductDataRequest(const ProductDataRequest& requestToSerialize, SerializedProductDataRequestBuffer& serializedRequest);

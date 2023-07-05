@@ -35,10 +35,11 @@ bool firmwareUpdateAwaiting = false;
 
 const char* firmwareUpdateTopic = "/firmware_update";
 const char* productDataRequestTopic = "/get_product_data";
+const std::string productDataResponseTopic = std::string(clientName) + productDataRequestTopic;
 
 ProductDataResponse* response;
 
-void messageHandler(char* topic, const byte* payload, unsigned int length)
+void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
 {
     if (strstr(topic, productDataRequestTopic) != nullptr) {
         while (!finishedPrinting) {
@@ -65,6 +66,22 @@ static void WiFiConnectHandler(arduino_event_id_t eventId)
     Serial.printf("Connected to %s!\n", ssid);
 }
 
+bool productDataRequestSuccessful(const char* const requestTopic, const SerializedProductDataRequestBuffer& buffer, uint8_t maxPublishRetries, uint32_t publishDelay) {
+    uint8_t publishRetries = 0;
+    while (publishRetries < maxPublishRetries) {
+        if (mqttClient.publish(requestTopic, buffer.data(), false)){
+            break;
+        }
+        delay(publishDelay);
+        publishRetries++;
+    }
+
+    if (publishRetries == maxPublishRetries) {
+        return false;
+    }
+    return true;
+}
+
 
 void setup()
 {
@@ -84,7 +101,7 @@ void setup()
     mqttClient.connect(clientName);
     std::string subscribeTopic = clientName + std::string("/+");
     mqttClient.subscribe(subscribeTopic.c_str());
-    mqttClient.setCallback(messageHandler);
+    mqttClient.setCallback(mqttMessageHandler);
 }
 
 void loop()
@@ -95,24 +112,32 @@ void loop()
     mqttClient.loop();
 
     if (receivedProductData) {
-        //print
+        // print to display
     }
 
-   /* if (barcodeReader.dataPresent()) {
+    if (barcodeReader.dataPresent()) {
         Barcode barcode {};
         barcodeReader.readUntilDelimiter(DELIMITER, barcode);
 
-        for (const char& charie: barcode) {
-            Serial.println(charie);
+        for (const char& digit: barcode) {
+            if (!isDigit(digit)) {
+                return;
+                // print to display
+            }
         }
-        SerializedRequestBuffer buffer;
-        if (serializeProductDataRequest(ProductDataRequest {.barcode = barcode.data(), .responseTopic = (std::string(clientName) +
-                                                                            productDataRequestTopic).c_str(), .includeDiacritics = false},
-                      buffer) == SERIALIZATION_FAILED) {
-            // serialization failed, do something
+        SerializedProductDataRequestBuffer requestBuffer;
+        if (serializeProductDataRequest(
+                ProductDataRequest {
+                        .barcode = barcode.data(),
+                        .responseTopic = productDataResponseTopic.c_str(),
+                        .includeDiacritics = false},
+                requestBuffer) == SERIALIZATION_FAILED) {
+            // serialization failed, print to display
         }
-        mqttClient.publish(productDataRequestTopic, buffer.data(), false);
-    }*/
+        if (!productDataRequestSuccessful(productDataRequestTopic, requestBuffer, 5, 100)){
+            // print to display
+        }
+    }
 
     if (firmwareUpdateAwaiting) {
         OTAHandler::init();
