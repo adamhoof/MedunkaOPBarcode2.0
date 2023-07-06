@@ -38,7 +38,7 @@ const char* const productDataRequestTopic = "/get_product_data";
 const std::string productDataResponseTopic = std::string(clientName) + productDataRequestTopic;
 const char* const lightCommandTopic = "/light";
 
-ProductDataResponse* response;
+ProductDataResponse response;
 
 void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
 {
@@ -56,8 +56,6 @@ void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
         bool requestedLightStatus = true;
         deserializeLightCommand(payload, requestedLightStatus);
         requestedLightStatus == true ? barcodeReader.lightOn() : barcodeReader.lightOff();
-    } else {
-
     }
 }
 
@@ -95,7 +93,6 @@ bool productDataRequestSuccessful(const char* const requestTopic, const Serializ
 void setup()
 {
     Serial.begin(115200);
-    response = new ProductDataResponse;
 
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_CONNECTED, WiFiConnectHandler);
     if (!wifiConnectionHandler.connect()) {
