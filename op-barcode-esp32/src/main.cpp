@@ -38,7 +38,7 @@ const char* const productDataRequestTopic = "/get_product_data";
 const std::string productDataResponseTopic = std::string(clientName) + productDataRequestTopic;
 const char* const lightCommandTopic = "/light";
 
-ProductDataResponse response;
+ProductDataResponse productDataResponse;
 
 void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
 {
@@ -46,7 +46,7 @@ void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
         while (!finishedPrinting) {
             delay(100);
         }
-        deserializeProductDataResponse(payload, response);
+        deserializeProductDataResponse(payload, productDataResponse);
         receivedProductData = true;
 
     } else if (strstr(topic, firmwareUpdateTopic) != nullptr) {
@@ -88,6 +88,11 @@ bool productDataRequestSuccessful(const char* const requestTopic, const Serializ
         return false;
     }
     return true;
+}
+
+void printProductData(const DisplayController& dispController,  const ProductDataResponse& productData)
+{
+
 }
 
 void setup()
@@ -143,6 +148,7 @@ void loop()
         if (!productDataRequestSuccessful(productDataRequestTopic, requestBuffer, 5, 100)) {
             // print to display
         }
+        printProductData(displayController, productDataResponse);
     }
 
     if (firmwareUpdateAwaiting) {
