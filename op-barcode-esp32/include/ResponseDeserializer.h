@@ -19,6 +19,6 @@ struct LightCommandData{
     bool state;
 };
 
-DeserializationStatus deserializeProductDataResponse(const byte* const input, const ProductDataResponse& response);
+DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse& response);
 
 DeserializationStatus deserializeLightCommand(const byte* const input, bool& status);
