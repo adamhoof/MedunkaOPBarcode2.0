@@ -26,8 +26,6 @@ BarcodeReader barcodeReader(BAUD, TX, RX);
 WiFiClient wiFiClient;
 PubSubClient mqttClient;
 Adafruit_ILI9341 display(CS, DC, RST);
-DisplayController displayController(display);
-
 
 bool receivedProductData = false;
 bool finishedPrinting = true;
@@ -90,9 +88,27 @@ bool productDataRequestSuccessful(const char* const requestTopic, const Serializ
     return true;
 }
 
-void printProductData(const DisplayController& dispController,  const ProductDataResponse& productData)
+void printProductData(Adafruit_ILI9341& disp, const ProductDataResponse& productData)
 {
+    clearDisplay(disp);
+    disp.setCursor(0, 20);
+    disp.setTextSize(1);
+    disp.setTextColor(ILI9341_WHITE);
+    display.printf("\n%s\n\n", productData.name);
 
+    display.setTextSize(2);
+    disp.setTextColor(ILI9341_GREEN);
+    display.printf("Cena: %.6g kc\n", productData.price);
+
+    display.setTextSize(1);
+    display.setTextColor(ILI9341_WHITE);
+    if (strcmp(productData.unitOfMeasure, "") > 0) {
+        display.printf("Cena za %s: %.6g kc\n\n",
+                       productData.unitOfMeasure,
+                       productData.price * productData.unitOfMeasureKoef);
+    }
+
+    display.printf("Stock: %hu", productData.stock);
 }
 
 void setup()
@@ -106,6 +122,7 @@ void setup()
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, WiFiDisconnectHandler);
 
     /*barcodeReader.init();*/
+    initDisplay(display, 3);
 
     mqttClient.setServer(mqttServer, mqttPort);
     mqttClient.setClient(wiFiClient);
@@ -123,7 +140,7 @@ void loop()
     mqttClient.loop();
 
     if (receivedProductData) {
-        // print to display
+        printProductData(display, productDataResponse);
     }
 
     if (barcodeReader.dataPresent()) {
@@ -132,8 +149,8 @@ void loop()
 
         for (const char& digit: barcode) {
             if (!isDigit(digit)) {
+                printErrorMessage(display, "\nZkuste prosim\nznovu...\n");
                 return;
-                // print to display
             }
         }
         SerializedProductDataRequestBuffer requestBuffer;
@@ -143,12 +160,11 @@ void loop()
                         .responseTopic = productDataResponseTopic.c_str(),
                         .includeDiacritics = false},
                 requestBuffer) == SERIALIZATION_FAILED) {
-            // serialization failed, print to display
+            printErrorMessage(display, "\nZkuste prosim\nznovu...\n");
         }
         if (!productDataRequestSuccessful(productDataRequestTopic, requestBuffer, 5, 100)) {
-            // print to display
+            printErrorMessage(display, "\nZkuste prosim\nznovu...\n");
         }
-        printProductData(displayController, productDataResponse);
     }
 
     if (firmwareUpdateAwaiting) {
