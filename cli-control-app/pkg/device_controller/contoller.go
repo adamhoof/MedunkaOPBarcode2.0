@@ -4,6 +4,7 @@ import (
 	"fmt"
 	commands "github.com/adamhoof/MedunkaOPBarcode2.0/cli-control-app/pkg/commands"
 	"log"
+	"os"
 )
 
 type Command struct {
@@ -38,13 +39,13 @@ func EnterDeviceControlMode(deviceName string) {
 		case "ls":
 			printAllCommands(availableCommands)
 		case "lightOn":
-			commands.TurnOnLight(deviceName)
+			commands.TurnOnLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
 		//send mqtt command
 		case "lightOff":
-			commands.TurnOffLight(deviceName)
+			commands.TurnOffLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
 			//send mqtt command
 		case "firmwareUpdate":
-			commands.UpdateFirmware(deviceName)
+			commands.UpdateFirmware(deviceName + "/" + os.Getenv("FIRMWARE_UPDATE_TOPIC"))
 			//send mqtt command
 		case "exit":
 			fmt.Printf("It was pleasure to communicate, your %s\n", deviceName)
