@@ -25,12 +25,12 @@ func main() {
 		log.Fatalf("failed to load environment variables from file %s: %s", os.Args[1], err)
 	}
 
-	baud, err := strconv.Atoi(os.Getenv(""))
+	baud, err := strconv.Atoi(os.Getenv("SERIAL_BAUD_RATE"))
 	if err != nil {
-		log.Fatalf("failed to convert %s to number: %s", os.Getenv(""), err)
+		log.Fatalf("failed to convert %s to number: %s", os.Getenv("SERIAL_BAUD_RATE"), err)
 	}
 
-	serialPort, err := serial.OpenPort(&serial.Config{Name: os.Getenv(""), Baud: baud})
+	serialPort, err := serial.OpenPort(&serial.Config{Name: os.Getenv("SERIAL_PORT_NAME"), Baud: baud})
 	if err != nil {
 		log.Fatalf("failed to initialize barcode reader: %s", err)
 	}
@@ -43,7 +43,6 @@ func main() {
 	options.SetAutoReconnect(true)
 	options.SetConnectRetry(true)
 	options.SetCleanSession(false)
-	options.SetConnectRetryInterval(time.Second * 2)
 	options.SetOrderMatters(false)
 
 	mqttClient := mqtt.NewClient(options)
@@ -59,7 +58,8 @@ func main() {
 	}
 	log.Println("mqtt client connected")
 
-	mqttClient.Subscribe(os.Args[2], 0, mqtt_handlers.ProductDataResponseHandler())
+	mqttClient.Subscribe(os.Args[2]+"/"+os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, mqtt_handlers.ProductDataResponseHandler())
+	mqttClient.Subscribe(os.Args[2]+"/"+os.Getenv("LIGHT_CONTROL_TOPIC"), 1, mqtt_handlers.LightControlHandler(serialPort))
 
 	var terminator byte = '\r'
 	fmt.Println("rdy to scan boi")
@@ -87,7 +87,7 @@ func main() {
 		}
 
 		for {
-			token := mqttClient.Publish(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 0, false, jsonProductDataRequest)
+			token := mqttClient.Publish(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, false, jsonProductDataRequest)
 			if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 				break
 			}
