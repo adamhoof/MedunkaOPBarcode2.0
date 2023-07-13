@@ -21,4 +21,4 @@ struct LightCommandData{
 
 DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse& response);
 
-DeserializationStatus deserializeLightCommand(const byte* const input, bool& status);
+DeserializationStatus deserializeLightCommand(const byte* const input, LightCommandData& command);

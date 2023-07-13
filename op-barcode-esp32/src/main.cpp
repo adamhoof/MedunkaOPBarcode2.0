@@ -51,9 +51,9 @@ void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
         firmwareUpdateAwaiting = !firmwareUpdateAwaiting;
 
     } else if (strstr(topic, lightCommandTopic)) {
-        bool requestedLightStatus = true;
-        deserializeLightCommand(payload, requestedLightStatus);
-        requestedLightStatus == true ? barcodeReader.lightOn() : barcodeReader.lightOff();
+        LightCommandData lightCommandData{};
+        deserializeLightCommand(payload, lightCommandData);
+        lightCommandData.state == true ? barcodeReader.lightOn() : barcodeReader.lightOff();
     }
 }
 
@@ -121,7 +121,7 @@ void setup()
     }
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, WiFiDisconnectHandler);
 
-    /*barcodeReader.init();*/
+    barcodeReader.init();
     initDisplay(display, 3);
 
     mqttClient.setServer(mqttServer, mqttPort);
@@ -137,7 +137,13 @@ void loop()
     while (!WiFi.isConnected()) {
         delay(10);
     }
-    mqttClient.loop();
+    if (!mqttClient.loop()) {
+        mqttClient.disconnect();
+        mqttClient.connect(clientName);
+        std::string subscribeTopic = clientName + std::string("/+");
+        mqttClient.subscribe(subscribeTopic.c_str());
+        mqttClient.setCallback(mqttMessageHandler);
+    }
 
     if (receivedProductData) {
         printProductData(display, productDataResponse);
@@ -147,12 +153,14 @@ void loop()
         Barcode barcode {};
         barcodeReader.readUntilDelimiter(DELIMITER, barcode);
 
-        for (const char& digit: barcode) {
-            if (!isDigit(digit)) {
-                printErrorMessage(display, "\nZkuste prosim\nznovu...\n");
+       /* for (int i = 0; i < (barcode.end() - barcode.begin())-1; i++) {
+            Serial.println(barcode[i]);
+            if (!isDigit(barcode[i]) || barcode[i] != '\0') {
+                printErrorMessage(display, "\nZkuste prosim\nznovu, carovy kod saje prdel...\n");
                 return;
             }
-        }
+        }*/
+
         SerializedProductDataRequestBuffer requestBuffer;
         if (serializeProductDataRequest(
                 ProductDataRequest {
