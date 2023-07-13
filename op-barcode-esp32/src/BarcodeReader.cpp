@@ -30,7 +30,6 @@ void BarcodeReader::lightOn()
     softwareSerial.write(deepSleep.data(), deepSleep.size());
     delay(1000);
     softwareSerial.write(wakeUpModule.data(), wakeUpModule.size());
-    delay(3000);
 }
 
 void BarcodeReader::lightOff()
@@ -42,5 +41,4 @@ void BarcodeReader::lightOff()
     softwareSerial.write(deepSleep.data(), deepSleep.size());
     delay(1000);
     softwareSerial.write(wakeUpModule.data(), wakeUpModule.size());
-    delay(3000);
 }
