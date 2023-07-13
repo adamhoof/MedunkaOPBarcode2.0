@@ -32,7 +32,7 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 			return
 		}
 
-		floatPricePerUnitOfMeasureCoef, err := strconv.ParseFloat(productData.UnitOfMeasureKoef, 64)
+		floatPricePerUnitOfMeasureCoef, err := strconv.ParseFloat(productData.UnitOfMeasureCoef, 64)
 		if err != nil {
 			log.Println(err)
 			return
@@ -44,7 +44,7 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 		cli_artist.PrintStyledText(cli_artist.BoldRed(), fmt.Sprintf("Cena za ks: %.2f Kč", floatPrice))
 		cli_artist.PrintSpaces(4)
 
-		if productData.UnitOfMeasureKoef == "" {
+		if productData.UnitOfMeasureCoef == "" {
 			cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Stock: %s", productData.Stock))
 			return
 		}

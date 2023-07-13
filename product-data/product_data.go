@@ -1,11 +1,11 @@
 package product_data
 
 type ProductData struct {
-	Name              string
-	Price             string
-	Stock             string
-	UnitOfMeasure     string
-	UnitOfMeasureKoef string
+	Name              string `json:"name"`
+	Price             string `json:"price"`
+	Stock             string `json:"stock"`
+	UnitOfMeasure     string `json:"unitOfMeasure"`
+	UnitOfMeasureCoef string `json:"unitOfMeasureCoef"`
 }
 
 type ProductDataRequest struct {
