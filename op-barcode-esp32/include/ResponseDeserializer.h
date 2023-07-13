@@ -8,10 +8,10 @@ enum DeserializationStatus {
 };
 
 struct ProductDataResponse {
-    const char* name;
+    std::string name;
     double price;
     uint16_t stock;
-    const char* unitOfMeasure;
+    std::string unitOfMeasure;
     double unitOfMeasureKoef;
 };
 
@@ -19,6 +19,6 @@ struct LightCommandData{
     bool state;
 };
 
-DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse& response);
+DeserializationStatus deserializeProductDataResponse(const byte* payload, ProductDataResponse& productDataResponse);
 
-DeserializationStatus deserializeLightCommand(const byte* const input, LightCommandData& command);
+DeserializationStatus deserializeLightCommand(const byte* input, LightCommandData& command);

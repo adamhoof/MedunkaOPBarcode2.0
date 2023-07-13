@@ -51,7 +51,7 @@ void mqttMessageHandler(char* topic, const byte* payload, unsigned int length)
         firmwareUpdateAwaiting = !firmwareUpdateAwaiting;
 
     } else if (strstr(topic, lightCommandTopic)) {
-        LightCommandData lightCommandData{};
+        LightCommandData lightCommandData {};
         deserializeLightCommand(payload, lightCommandData);
         lightCommandData.state == true ? barcodeReader.lightOn() : barcodeReader.lightOff();
     }
@@ -94,7 +94,7 @@ void printProductData(Adafruit_ILI9341& disp, const ProductDataResponse& product
     disp.setCursor(0, 20);
     disp.setTextSize(1);
     disp.setTextColor(ILI9341_WHITE);
-    display.printf("\n%s\n\n", productData.name);
+    display.printf("\n%s\n\n", productData.name.c_str());
 
     display.setTextSize(2);
     disp.setTextColor(ILI9341_GREEN);
@@ -102,9 +102,9 @@ void printProductData(Adafruit_ILI9341& disp, const ProductDataResponse& product
 
     display.setTextSize(1);
     display.setTextColor(ILI9341_WHITE);
-    if (strcmp(productData.unitOfMeasure, "") > 0) {
+    if (strcmp(productData.unitOfMeasure.c_str(), "") > 0) {
         display.printf("Cena za %s: %.6g kc\n\n",
-                       productData.unitOfMeasure,
+                       productData.unitOfMeasure.c_str(),
                        productData.price * productData.unitOfMeasureKoef);
     }
 
@@ -146,20 +146,15 @@ void loop()
     }
 
     if (receivedProductData) {
+        finishedPrinting = false;
         printProductData(display, productDataResponse);
+        finishedPrinting = true;
+        receivedProductData = false;
     }
 
     if (barcodeReader.dataPresent()) {
         Barcode barcode {};
         barcodeReader.readUntilDelimiter(DELIMITER, barcode);
-
-       /* for (int i = 0; i < (barcode.end() - barcode.begin())-1; i++) {
-            Serial.println(barcode[i]);
-            if (!isDigit(barcode[i]) || barcode[i] != '\0') {
-                printErrorMessage(display, "\nZkuste prosim\nznovu, carovy kod saje prdel...\n");
-                return;
-            }
-        }*/
 
         SerializedProductDataRequestBuffer requestBuffer;
         if (serializeProductDataRequest(

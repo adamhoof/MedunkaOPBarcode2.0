@@ -1,26 +1,26 @@
 #include "ResponseDeserializer.h"
 
-DeserializationStatus deserializeProductDataResponse(const byte* const input, ProductDataResponse& response)
+DeserializationStatus deserializeProductDataResponse(const byte* payload, ProductDataResponse& productDataResponse)
 {
     StaticJsonDocument<350> jsonResponse;
-    DeserializationError error = deserializeJson(jsonResponse, input);
-
-    response.name = jsonResponse["name"].as<const char*>();
-    response.price = jsonResponse["price"].as<double>();
-    response.stock = jsonResponse["stock"].as<uint16_t>();
-    response.unitOfMeasure = jsonResponse["unitOfMeasure"].as<const char*>();
-    response.unitOfMeasureKoef = jsonResponse["unitOfMeasureCoef"].as<double>();
+    DeserializationError error = deserializeJson(jsonResponse, payload);
     if (error != DeserializationError::Ok) {
         return DESERIALIZATION_FAILED;
     }
+
+    productDataResponse.name = jsonResponse["name"].as<std::string>();
+    productDataResponse.price = jsonResponse["price"];
+    productDataResponse.stock = jsonResponse["stock"];
+    productDataResponse.unitOfMeasure = jsonResponse["unitOfMeasure"].as<std::string>();
+    productDataResponse.unitOfMeasureKoef = jsonResponse["unitOfMeasureCoef"];
+
     return DESERIALIZATION_OK;
 }
 
-DeserializationStatus deserializeLightCommand(const byte* const input, LightCommandData& command)
+DeserializationStatus deserializeLightCommand(const byte* input, LightCommandData& command)
 {
     StaticJsonDocument<30> jsonResponse;
     DeserializationError error = deserializeJson(jsonResponse, input);
-
     if (error != DeserializationError::Ok) {
         return DESERIALIZATION_FAILED;
     }
