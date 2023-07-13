@@ -4,6 +4,7 @@
 void initDisplay(Adafruit_ILI9341& display, uint8_t rotation)
 {
     display.begin();
+    display.setFont(&ariblk9pt8b);
     display.setRotation(rotation);
     clearDisplay(display);
 }

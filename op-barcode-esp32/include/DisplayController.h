@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Adafruit_ILI9341.h>
+#include "arial.h"
 
 void initDisplay(Adafruit_ILI9341& display, uint8_t rotation);
 
