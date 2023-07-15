@@ -113,8 +113,6 @@ void printProductData(Adafruit_ILI9341& disp, const ProductDataResponse& product
 
 void setup()
 {
-    Serial.begin(115200);
-
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_CONNECTED, WiFiConnectHandler);
     if (!wifiConnectionHandler.connect()) {
         ESP.restart();
@@ -122,7 +120,7 @@ void setup()
     wifiConnectionHandler.setEventHandler(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, WiFiDisconnectHandler);
 
     barcodeReader.init();
-    initDisplay(display, 3);
+    initDisplay(display, 1);
 
     mqttClient.setServer(mqttServer, mqttPort);
     mqttClient.setClient(wiFiClient);
