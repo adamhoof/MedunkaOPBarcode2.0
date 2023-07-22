@@ -25,6 +25,8 @@ func main() {
 		log.Fatalf("failed to load environment variables from file %s: %s", os.Args[1], err)
 	}
 
+	clientName := os.Args[2]
+
 	baud, err := strconv.Atoi(os.Getenv("SERIAL_BAUD_RATE"))
 	if err != nil {
 		log.Fatalf("failed to convert %s to number: %s", os.Getenv("SERIAL_BAUD_RATE"), err)
@@ -39,7 +41,7 @@ func main() {
 
 	options := mqtt.NewClientOptions()
 	options.AddBroker(os.Getenv("MQTT_SERVER_AND_PORT"))
-	options.SetClientID(os.Args[2])
+	options.SetClientID(clientName)
 	options.SetAutoReconnect(true)
 	options.SetConnectRetry(true)
 	options.SetCleanSession(false)
@@ -58,8 +60,8 @@ func main() {
 	}
 	log.Println("mqtt client connected")
 
-	mqttClient.Subscribe(os.Args[2]+"/"+os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, mqtt_handlers.ProductDataResponseHandler())
-	mqttClient.Subscribe(os.Args[2]+"/"+os.Getenv("LIGHT_CONTROL_TOPIC"), 1, mqtt_handlers.LightControlHandler(serialPort))
+	mqttClient.Subscribe(clientName+"/"+os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, mqtt_handlers.ProductDataResponseHandler())
+	mqttClient.Subscribe(clientName+"/"+os.Getenv("LIGHT_CONTROL_TOPIC"), 1, mqtt_handlers.LightControlHandler(serialPort))
 
 	var terminator byte = '\r'
 	fmt.Println("rdy to scan boi")
@@ -76,7 +78,7 @@ func main() {
 		barcodeAsString := string(barcodeAsByteArray[:len(barcodeAsByteArray)-1])
 
 		productDataRequest := product_data.ProductDataRequest{
-			ClientTopic:       os.Args[2],
+			ClientTopic:       clientName,
 			Barcode:           barcodeAsString,
 			IncludeDiacritics: true,
 		}

@@ -28,20 +28,20 @@ func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacr
 		log.Fatal("failed to subscribe: ", token.Error())
 	}
 
-	productData := product_data.ProductDataRequest{
+	productDataRequest := product_data.ProductDataRequest{
 		ClientTopic:       clientTopic,
 		Barcode:           barcode,
 		IncludeDiacritics: includeDiacritics,
 	}
 
-	productDataAsJson, err := json.Marshal(&productData)
+	productDataAsJson, err := json.Marshal(&productDataRequest)
 	if err != nil {
 		log.Println("unable to serialize product data into json: ", err)
 		return
 	}
 
 	for {
-		token = mqttClient.Publish(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 0, false, productDataAsJson)
+		token = mqttClient.Publish(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, false, productDataAsJson)
 		if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 			break
 		}
