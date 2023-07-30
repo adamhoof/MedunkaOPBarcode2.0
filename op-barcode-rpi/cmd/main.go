@@ -41,15 +41,8 @@ func main() {
 	barcodeReader := bufio.NewReader(serialPort)
 	log.Println("serial port initialized")
 
-	options := mqtt.NewClientOptions()
-	options.AddBroker(os.Getenv("MQTT_SERVER_AND_PORT"))
-	options.SetClientID(clientName)
-	options.SetAutoReconnect(true)
-	options.SetConnectRetry(true)
-	options.SetCleanSession(false)
-	options.SetOrderMatters(false)
-
-	mqttClient := mqtt.NewClient(options)
+	mqttClient := mqtt_client.CreateDefault(clientName)
+	mqtt_client.ConnectDefault(&mqttClient)
 
 	for {
 		token := mqttClient.Connect()
