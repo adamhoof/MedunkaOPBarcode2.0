@@ -26,6 +26,8 @@ func main() {
 	}
 
 	clientName := os.Args[2]
+	productDataResponseTopic := clientName + "/" + os.Getenv("MQTT_PRODUCT_DATA_REQUEST")
+	lightControlTopic := clientName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC")
 
 	baud, err := strconv.Atoi(os.Getenv("SERIAL_BAUD_RATE"))
 	if err != nil {
@@ -60,8 +62,8 @@ func main() {
 	}
 	log.Println("mqtt client connected")
 
-	mqttClient.Subscribe(clientName+"/"+os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, mqtt_handlers.ProductDataResponseHandler())
-	mqttClient.Subscribe(clientName+"/"+os.Getenv("LIGHT_CONTROL_TOPIC"), 1, mqtt_handlers.LightControlHandler(serialPort))
+	mqttClient.Subscribe(productDataResponseTopic, 1, mqtt_handlers.ProductDataResponseHandler())
+	mqttClient.Subscribe(lightControlTopic, 1, mqtt_handlers.LightControlHandler(serialPort))
 
 	var terminator byte = '\r'
 	fmt.Println("rdy to scan boi")
@@ -78,7 +80,7 @@ func main() {
 		barcodeAsString := string(barcodeAsByteArray[:len(barcodeAsByteArray)-1])
 
 		productDataRequest := product_data.ProductDataRequest{
-			ClientTopic:       clientName,
+			ClientTopic:       productDataResponseTopic,
 			Barcode:           barcodeAsString,
 			IncludeDiacritics: true,
 		}
