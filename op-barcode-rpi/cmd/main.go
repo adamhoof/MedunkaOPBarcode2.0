@@ -44,15 +44,6 @@ func main() {
 	mqttClient := mqtt_client.CreateDefault(clientName)
 	mqtt_client.ConnectDefault(&mqttClient)
 
-	for {
-		token := mqttClient.Connect()
-		if token.WaitTimeout(5*time.Second) && token.Error() == nil {
-			break
-		}
-		log.Println("mqtt client failed to connect, retrying...", token.Error())
-		time.Sleep(5 * time.Second)
-
-	}
 	log.Println("mqtt client connected")
 
 	mqttClient.Subscribe(productDataResponseTopic, 1, mqtt_handlers.ProductDataResponseHandler())
