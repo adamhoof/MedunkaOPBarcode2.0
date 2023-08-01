@@ -51,8 +51,8 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 
 		pricePerUnitOfMeasure := floatPrice * floatPricePerUnitOfMeasureCoef
 		cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Přepočet na %s: %.2f Kč", productData.UnitOfMeasure, pricePerUnitOfMeasure))
-		cli_artist.PrintSpaces(2)
+		cli_artist.PrintSpaces(3)
 		cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Stock: %s", productData.Stock))
-		cli_artist.PrintSpaces(5)
+		cli_artist.PrintSpaces(2)
 	}
 }
