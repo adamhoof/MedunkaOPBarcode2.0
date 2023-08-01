@@ -25,6 +25,10 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 			return
 		}
 
+		if productData.Price == "" {
+			log.Println("empty price, check if product exists in database...")
+			return
+		}
 		characterFilterRegex := regexp.MustCompile(`[^0-9.,]`)
 		floatPrice, err := strconv.ParseFloat(characterFilterRegex.ReplaceAllString(productData.Price, ""), 64)
 		if err != nil {
@@ -32,11 +36,7 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 			return
 		}
 
-		floatPricePerUnitOfMeasureCoef, err := strconv.ParseFloat(productData.UnitOfMeasureCoef, 64)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+		floatPricePerUnitOfMeasureCoef, unitOfMeasureCoefErr := strconv.ParseFloat(productData.UnitOfMeasureCoef, 64)
 
 		cli_artist.PrintSpaces(1)
 		cli_artist.PrintStyledText(cli_artist.ItalicWhite(), productData.Name)
@@ -44,14 +44,15 @@ func ProductDataResponseHandler() mqtt.MessageHandler {
 		cli_artist.PrintStyledText(cli_artist.BoldRed(), fmt.Sprintf("Cena za ks: %.2f Kč", floatPrice))
 		cli_artist.PrintSpaces(4)
 
-		if productData.UnitOfMeasureCoef == "" {
+		if productData.UnitOfMeasureCoef == "" || unitOfMeasureCoefErr != nil {
 			cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Stock: %s", productData.Stock))
 			return
 		}
 
 		pricePerUnitOfMeasure := floatPrice * floatPricePerUnitOfMeasureCoef
 		cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Přepočet na %s: %.2f Kč", productData.UnitOfMeasure, pricePerUnitOfMeasure))
-		cli_artist.PrintSpaces(1)
+		cli_artist.PrintSpaces(2)
 		cli_artist.PrintStyledText(cli_artist.ItalicWhite(), fmt.Sprintf("Stock: %s", productData.Stock))
+		cli_artist.PrintSpaces(5)
 	}
 }
