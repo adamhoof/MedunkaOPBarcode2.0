@@ -20,10 +20,10 @@ func printAllCommands(availableCommands []Command) {
 func EnterDeviceControlMode(deviceName string) {
 	availableCommands := []Command{
 		{"ls", "list all available commands with their description"},
-		{"lightOn", "turn on light of device"},
-		{"lightOff", "turn off light of device"},
+		{"lon", "turn on light of device"},
+		{"loff", "turn off light of device"},
 		{"firmwareUpdate", "put device into firmware update mode"},
-		{"exit", "exit device control mode"},
+		{"e", "exit device control mode"},
 	}
 	fmt.Printf("Hello fella, you are currently in the control mode of device: %s\ntype ls to list available commands...\n", deviceName)
 
@@ -35,19 +35,20 @@ func EnterDeviceControlMode(deviceName string) {
 			continue
 		}
 
+		fmt.Println()
 		switch input {
 		case "ls":
 			printAllCommands(availableCommands)
-		case "lightOn":
+		case "lon":
 			commands.TurnOnLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
 		//send mqtt command
-		case "lightOff":
+		case "loff":
 			commands.TurnOffLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
 			//send mqtt command
 		case "firmwareUpdate":
 			commands.UpdateFirmware(deviceName + "/" + os.Getenv("FIRMWARE_UPDATE_TOPIC"))
 			//send mqtt command
-		case "exit":
+		case "e":
 			fmt.Printf("It was pleasure to communicate, your %s\n", deviceName)
 			return
 		default:

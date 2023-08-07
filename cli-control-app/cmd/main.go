@@ -23,9 +23,9 @@ func main() {
 
 	availableCommands := []Command{
 		{"ls", "list all available commands with their description"},
-		{"update", "update database table containing product info"},
-		{"mqttTest", "test out mqtt connection by sending sample product data request"},
-		{"controlDevice", "control specific device (command prompts for name of device later)"},
+		{"upd", "update database table containing product info"},
+		{"tmqtt", "test out mqtt connection by sending sample product data request"},
+		{"cdev", "control specific device (command prompts for name of device later)"},
 	}
 
 	for {
@@ -35,14 +35,15 @@ func main() {
 			continue
 		}
 
+		fmt.Println()
 		switch input {
-		case "update":
+		case "upd":
 			if err := commands.DatabaseUpdate(); err != nil {
 				log.Println(err)
 			}
-		case "mqttTest":
+		case "tmqtt":
 			commands.MQTTProductDataRequestTest("mqtt_test", "8595020340103", true)
-		case "controlDevice":
+		case "cdev":
 			fmt.Print("Which device do you want to control?: ")
 			if _, err := fmt.Scanln(&input); err != nil {
 				log.Printf("failed to scan line: %s\n", err)
