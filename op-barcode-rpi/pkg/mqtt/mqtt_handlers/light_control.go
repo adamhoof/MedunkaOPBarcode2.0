@@ -1,11 +1,16 @@
 package mqtt_handlers
 
 import (
+	"encoding/json"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/tarm/serial"
 	"log"
 	"time"
 )
+
+type LightCommand struct {
+	State bool `json:"state"`
+}
 
 func sendLightOnCommand(port *serial.Port) error {
 	turnOnLight := []byte{0x7E, 0x00, 0x08, 0x01, 0x00, 0x00, 0x5F, 0xAB, 0xCD}
@@ -82,13 +87,15 @@ func lightOff(port *serial.Port) {
 func LightControlHandler(port *serial.Port) mqtt.MessageHandler {
 	return func(client mqtt.Client, message mqtt.Message) {
 
-		state := string(message.Payload())
-		if state == "true" {
+		var lightCommand LightCommand
+		if err := json.Unmarshal(message.Payload(), &lightCommand); err != nil {
+			log.Printf("failed to parse json payload: %s", err)
+		}
+
+		if lightCommand.State == true {
 			lightOn(port)
-		} else if state == "false" {
+		} else if lightCommand.State == false {
 			lightOff(port)
-		} else {
-			log.Printf("invalid state received: %s", state)
 		}
 	}
 }
