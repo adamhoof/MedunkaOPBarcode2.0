@@ -16,7 +16,7 @@ if [ "$#" -ne 2 ]; then
   exit 1
 fi
 
-mdb-export --delimiter=";" --quote='"' --escape-invisible "$1" SKz | awk -F";" 'BEGIN { OFS=";" } { print $25, $24, "\"" $54 "\"", $32, "\"" $34 "\"", "\"" $36 "\"" }' > "$2"
+mdb-export --delimiter=";" --quote='"' --escape-invisible "$1" SKz | awk -F";" 'BEGIN { OFS=";" } { print $27, $26, "\"" $56 "\"", $34, "\"" $36 "\"", "\"" $38 "\"" }' > "$2"
 
 #detect header changes
 requiredHeader="Nazev;EAN;ProdejDPH;MJ2;MJ2Koef;StavZ"
