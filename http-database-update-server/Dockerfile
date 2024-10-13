@@ -1,5 +1,5 @@
 # Start from the latest Golang base image
-FROM golang:1.20 as builder
+FROM golang:1.20-alpine as builder
 
 # Add Maintainer Info
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
@@ -18,11 +18,11 @@ COPY ./http-database-update-server ./http-database-update-server
 COPY ./database ./database
 COPY ./product-data ./product-data
 
-# Build the Go app
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
+# Build the Go app for ARM architecture
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
 
 # Start a new stage from scratch
-FROM alpine:latest  
+FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
@@ -33,6 +33,7 @@ COPY --from=builder /app/main .
 
 # Command to run the executable
 CMD ["./main"]
+
 #CMD ["/bin/sh"]
 
 #sudo docker  build -t test-http-database-update-server -f ./http-database-update-server/Dockerfile .
