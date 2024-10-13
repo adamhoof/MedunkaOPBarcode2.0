@@ -22,9 +22,12 @@ COPY ./product-data ./product-data
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
 
 # Start a new stage from scratch
-FROM alpine:latest
+FROM alpine:3.20
 
-RUN apk --no-cache add ca-certificates
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk update && \
+    apk --no-cache add ca-certificates
+
 
 WORKDIR /root/
 
