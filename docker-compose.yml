@@ -1,5 +1,6 @@
 services:
   http_database_update_server:
+    restart: "on-failure"
     build:
       context: .
       dockerfile: ./http-database-update-server/Dockerfile
@@ -14,6 +15,7 @@ services:
     networks:
       - MOB_network
   db:
+    restart: "on-failure"
     image: postgres:14.7
     command: -c ssl=off
     env_file: env.list
@@ -25,6 +27,7 @@ services:
     networks:
       - MOB_network
   mosquitto:
+    restart: "on-failure"
     image: eclipse-mosquitto:latest
     ports:
       - "1883:1883"
@@ -36,6 +39,7 @@ services:
     networks:
       - MOB_network
   mqtt_database_api:
+    restart: "on-failure"
     build:
       context: .
       dockerfile: ./mqtt-database-api/Dockerfile

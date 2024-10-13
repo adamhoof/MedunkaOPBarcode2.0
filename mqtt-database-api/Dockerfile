@@ -17,7 +17,6 @@ COPY ./database ./database
 COPY ./product-data ./product-data
 COPY ./mqtt-client ./mqtt-client
 
-# Build the Go app for ARM architecture
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
 
 # Start a new stage from scratch

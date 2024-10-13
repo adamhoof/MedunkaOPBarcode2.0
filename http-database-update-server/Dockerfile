@@ -24,7 +24,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main
 # Start a new stage from scratch
 FROM --platform=${BUILDPLATFORM} alpine:3.10
 
-RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
@@ -33,3 +32,8 @@ COPY --from=builder /app/main .
 
 # Command to run the executable
 CMD ["./main"]
+
+#CMD ["/bin/sh"]
+
+#sudo docker  build -t test-http-database-update-server -f ./http-database-update-server/Dockerfile .
+#sudo docker run -it -e CSV_OUTPUT_PATH=/app/output.csv --env-file ./env.list --network=whales-network -d test-http-database-update-server
