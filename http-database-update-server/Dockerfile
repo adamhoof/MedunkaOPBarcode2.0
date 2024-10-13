@@ -1,5 +1,5 @@
 # Start from the latest Golang base image for ARM
-FROM --platform=linux/arm64 golang:latest as builder
+FROM --platform=${BUILDPLATFORM} golang:1.19 as builder
 
 # Add Maintainer Info
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
@@ -22,7 +22,7 @@ COPY ./product-data ./product-data
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
 
 # Start a new stage from scratch
-FROM --platform=linux/arm64 alpine:latest
+FROM --platform=${BUILDPLATFORM} alpine:3.10
 
 RUN apk --no-cache add ca-certificates
 

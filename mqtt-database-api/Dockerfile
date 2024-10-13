@@ -1,5 +1,5 @@
 # Start from the latest Golang base image for ARM
-FROM --platform=linux/arm64 golang:latest as builder
+FROM --platform=${BUILDPLATFORM} golang:1.19 as builder
 
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
 
@@ -21,7 +21,7 @@ COPY ./mqtt-client ./mqtt-client
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
 
 # Start a new stage from scratch
-FROM --platform=linux/arm64 scratch  
+FROM --platform=${BUILDPLATFORM} scratch
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
