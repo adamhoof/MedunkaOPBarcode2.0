@@ -1,4 +1,5 @@
-FROM golang:latest as builder
+# Use an ARM64 compatible Golang base image (alpine is smaller and efficient)
+FROM golang:1.20-alpine as builder
 
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
 
@@ -15,7 +16,8 @@ COPY ./database ./database
 COPY ./product-data ./product-data
 COPY ./mqtt-client ./mqtt-client
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
+# Build the application (for ARM architecture)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
 
 # Start a new stage from scratch
 FROM scratch  

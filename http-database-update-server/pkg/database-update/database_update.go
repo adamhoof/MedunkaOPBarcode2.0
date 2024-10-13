@@ -64,8 +64,12 @@ func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerF
 
 		fileLocation, err := extractFileFromRequest(request)
 		if err != nil {
-			handleError(w, err, http.StatusBadRequest)
-			return
+			w.WriteHeader(http.StatusInternalServerError)
+			encodeErr := json.NewEncoder(w).Encode(ErrorResponse{Message: err.Error() + "\nTrying to recover from fatal error, try again in a few minutes..."})
+			if encodeErr != nil {
+				log.Printf("Failed to encode error message into JSON: %s\n", encodeErr)
+			}
+			log.Fatal("Critical error encountered, exiting the app...")
 		}
 		defer func() {
 			err = os.Remove(fileLocation)
