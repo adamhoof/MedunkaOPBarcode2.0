@@ -1,5 +1,5 @@
-# Use an ARM64 compatible Golang base image (alpine is smaller and efficient)
-FROM golang:1.20-alpine as builder
+# Start from the latest Golang base image for ARM
+FROM --platform=${BUILDPLATFORM} golang:1.19 as builder
 
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
 
@@ -8,6 +8,7 @@ WORKDIR /app
 
 COPY go.mod go.sum ./
 
+# Download all dependencies
 RUN go mod download
 
 # Copy the source from the current directory to the Working Directory inside the container
@@ -16,11 +17,10 @@ COPY ./database ./database
 COPY ./product-data ./product-data
 COPY ./mqtt-client ./mqtt-client
 
-# Build the application (for ARM architecture)
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./mqtt-database-api/cmd/main.go
 
 # Start a new stage from scratch
-FROM scratch  
+FROM --platform=${BUILDPLATFORM} scratch
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
@@ -30,6 +30,3 @@ EXPOSE 1883
 
 # Run the binary program produced by ‘go install’
 CMD ["./main"]
-
-#sudo docker  build -t test-mqtt -f ./mqtt-database-api/Dockerfile .
-#sudo docker run -it --env-file ./env.list --network=medunkaopbarcode20_default -d test-mqtt
