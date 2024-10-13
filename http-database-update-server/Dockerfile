@@ -1,5 +1,5 @@
-# Start from the latest Golang base image
-FROM golang:1.20-alpine as builder
+# Start from the latest Golang base image for ARM
+FROM --platform=${BUILDPLATFORM} golang:1.19 as builder
 
 # Add Maintainer Info
 LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
@@ -10,7 +10,7 @@ WORKDIR /app
 # Copy go mod and sum files
 COPY go.mod go.sum ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+# Download all dependencies
 RUN go mod download
 
 # Copy the source from the current directory to the Working Directory inside the container
@@ -22,11 +22,7 @@ COPY ./product-data ./product-data
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
 
 # Start a new stage from scratch
-FROM alpine:3.20
-
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-    apk update && \
-    apk --no-cache add ca-certificates
+FROM --platform=${BUILDPLATFORM} alpine:3.10
 
 
 WORKDIR /root/
