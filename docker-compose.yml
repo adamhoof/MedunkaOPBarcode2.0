@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./http-database-update-server/Dockerfile
+    platform: linux/arm64
     ports:
       - "8080:8080"
     depends_on:
