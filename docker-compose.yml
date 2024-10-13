@@ -1,4 +1,3 @@
-version: '3'
 services:
   http_database_update_server:
     build:
