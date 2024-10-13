@@ -39,6 +39,7 @@ services:
     build:
       context: .
       dockerfile: ./mqtt-database-api/Dockerfile
+    platform: linux/arm64
     depends_on:
       - db
       - mosquitto
