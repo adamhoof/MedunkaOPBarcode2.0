@@ -25,7 +25,7 @@ services:
     networks:
       - MOB_network
   mosquitto:
-    image: eclipse-mosquitto:1.6.15
+    image: eclipse-mosquitto:2.0.19
     ports:
       - "1883:1883"
     volumes:
