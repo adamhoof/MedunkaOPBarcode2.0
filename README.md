@@ -10,7 +10,7 @@
 #### Languages: Go, C, C++, Bash
 #### Database: PostgreSQL
 #### MQTT broker: Mosquitto
-#### Container engine and orchestrator: Docker with docker compose (used for PostgreSQL, Mosquitto, mqtt-database-api, http-database-update-server)
+#### Container engine and orchestrator: Docker with docker compose (used for PostgreSQL, Mosquitto, mqtt-database-api, http-database-update-server, cli-control-app)
 
 ---
 
@@ -54,7 +54,7 @@
 #### http-database-update-server
 
 - HTTP server that performs updates of product database on request
-- listens for .mdb or .csv files from [/update](#cli-control-app) and then creates database from those files
+- listens for .mdb or .csv files on /update topic, creates database from the file
   
 ---
 
