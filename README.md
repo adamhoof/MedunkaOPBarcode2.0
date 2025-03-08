@@ -4,6 +4,10 @@
 
 ---
 
+## Demo video of station
+
+https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
+
 ### Technologies
 #### Protocols: HTTP, MQTT
 #### Devices: ESP32, Raspberry Pi
