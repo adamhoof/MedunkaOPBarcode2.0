@@ -1,4 +1,5 @@
 #include "DisplayController.h"
+#include "arial.h"
 
 
 void initDisplay(Adafruit_ILI9341& display, uint8_t rotation)
