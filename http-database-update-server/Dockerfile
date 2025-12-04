@@ -19,7 +19,9 @@ COPY ./database ./database
 COPY ./product-data ./product-data
 
 # Build the Go app for ARM architecture
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
+ARG TARGETARCH
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH:-amd64} go build -a -installsuffix cgo -o main ./http-database-update-server/cmd/main.go
 
 # Start a new stage from scratch
 FROM --platform=${BUILDPLATFORM} alpine:3.10
