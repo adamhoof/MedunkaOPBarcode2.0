@@ -2,12 +2,13 @@ package commands
 
 import (
 	"encoding/json"
-	mqtt_client "github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-client"
-	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
 	"os"
 	"time"
+
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-client"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacritics bool) {
@@ -16,7 +17,7 @@ func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacr
 
 	token := mqttClient.Subscribe(clientTopic, 0, func(client mqtt.Client, message mqtt.Message) {
 		log.Printf("Received request at topic: %s\n", message.Topic())
-		var productData product_data.ProductData
+		var productData domain.Product
 		err := json.Unmarshal(message.Payload(), &productData)
 		if err != nil {
 			log.Println("error unpacking payload into product data request struct: ", err)
@@ -28,7 +29,7 @@ func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacr
 		log.Fatal("failed to subscribe: ", token.Error())
 	}
 
-	productDataRequest := product_data.ProductDataRequest{
+	productDataRequest := domain.ProductDataRequest{
 		ClientTopic:       clientTopic,
 		Barcode:           barcode,
 		IncludeDiacritics: includeDiacritics,

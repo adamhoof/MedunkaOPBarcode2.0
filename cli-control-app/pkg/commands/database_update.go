@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	file_parser "github.com/adamhoof/MedunkaOPBarcode2.0/file-parser"
 	"io"
 	"log"
 	"mime/multipart"
@@ -22,12 +21,7 @@ func DatabaseUpdate() error {
 		return fmt.Errorf("file not ready to be used: %w", err)
 	}
 
-	mdbFileParser := file_parser.MDBFileParser{}
-	if err := mdbFileParser.ToCSV(os.Getenv("MDB_PATH"), os.Getenv("CSV_OUTPUT_PATH"), os.Getenv("SHELL_MDB_FILE_PARSER_PATH")); err != nil {
-		return fmt.Errorf("failed to parse mdb to csv: %w", err)
-	}
-
-	if err := sendFileToServer(os.Getenv("HTTP_SERVER_HOST"), os.Getenv("HTTP_SERVER_PORT"), os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), os.Getenv("CSV_OUTPUT_PATH")); err != nil {
+	if err := sendFileToServer(os.Getenv("HTTP_SERVER_HOST"), os.Getenv("HTTP_SERVER_PORT"), os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), os.Getenv("MDB_PATH")); err != nil {
 		return fmt.Errorf("failed to send file to server: %w", err)
 	}
 	return nil

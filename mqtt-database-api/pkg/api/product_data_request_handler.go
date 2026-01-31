@@ -1,28 +1,36 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
-	godiacritics "github.com/Regis24GmbH/go-diacritics"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
-	product_data "github.com/adamhoof/MedunkaOPBarcode2.0/product-data"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"log"
-	"os"
 	"time"
+
+	godiacritics "github.com/Regis24GmbH/go-diacritics"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func HandleProductDataRequest(dbHandler database.DatabaseHandler) mqtt.MessageHandler {
+const (
+	requestTimeout = 5 * time.Second
+)
+
+func HandleProductDataRequest(dbHandler database.Handler) mqtt.MessageHandler {
 	return func(mqttClient mqtt.Client, message mqtt.Message) {
-		var request product_data.ProductDataRequest
-		err := json.Unmarshal(message.Payload(), &request)
-		if err != nil {
-			log.Println("error unpacking payload into product data request struct: ", err)
+		var request domain.ProductDataRequest
+		if err := json.Unmarshal(message.Payload(), &request); err != nil {
+			log.Printf("error unpacking payload into product data request struct: %s", err)
 			return
 		}
 
-		productData, err := dbHandler.FetchProductData(os.Getenv("DB_TABLE_NAME"), request.Barcode)
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		defer cancel()
+
+		productData, err := dbHandler.Fetch(ctx, request.Barcode)
 		if err != nil {
-			log.Println("failed to fetch product data: ", err)
+			log.Printf("failed to fetch product data: %s", err)
+			return
 		}
 
 		if !request.IncludeDiacritics {
@@ -30,18 +38,18 @@ func HandleProductDataRequest(dbHandler database.DatabaseHandler) mqtt.MessageHa
 			productData.Price = godiacritics.Normalize(productData.Price)
 		}
 
-		productDataAsJson, err := json.Marshal(&productData)
+		productDataAsJSON, err := json.Marshal(productData)
 		if err != nil {
-			log.Println("unable to serialize product data into json: ", err)
+			log.Printf("unable to serialize product data into json: %s", err)
 			return
 		}
 
 		for {
-			token := mqttClient.Publish(request.ClientTopic, 1, false, productDataAsJson)
+			token := mqttClient.Publish(request.ClientTopic, 1, false, productDataAsJSON)
 			if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 				break
 			}
-			log.Println("failed to publish message...", token.Error())
+			log.Printf("failed to publish message: %s", token.Error())
 			time.Sleep(1 * time.Second)
 		}
 	}

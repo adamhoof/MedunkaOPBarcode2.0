@@ -1,13 +1,20 @@
 package database_update
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/database"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/parser"
 )
 
 type ErrorResponse struct {
@@ -22,6 +29,10 @@ type SuccessResponse struct {
 	Message string `json:"message"`
 }
 
+const (
+	requestTimeout = 15 * time.Minute
+)
+
 func extractFileFromRequest(request *http.Request) (string, error) {
 	receivedFile, _, err := request.FormFile("file")
 	if err != nil {
@@ -34,7 +45,16 @@ func extractFileFromRequest(request *http.Request) (string, error) {
 		}
 	}()
 
-	file, err := os.Create(os.Getenv("HTTP_SERVER_CSV_FILE_PATH"))
+	targetPath := os.Getenv("HTTP_SERVER_CSV_FILE_PATH")
+	if strings.TrimSpace(targetPath) == "" {
+		return "", errors.New("HTTP_SERVER_CSV_FILE_PATH is not set")
+	}
+
+	if err = os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return "", fmt.Errorf("failed to create directory for upload: %w", err)
+	}
+
+	file, err := os.Create(targetPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create file: %s", err)
 	}
@@ -58,18 +78,19 @@ func handleError(w http.ResponseWriter, err error, statusCode int) {
 		log.Printf("failed to encode message into json: %s\n", err)
 	}
 }
-func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerFunc {
+func HandleDatabaseUpdateRequest(handler database.Handler, catalogParser parser.CatalogParser) http.HandlerFunc {
 	return func(w http.ResponseWriter, request *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		if catalogParser == nil {
+			handleError(w, errors.New("catalog parser is not configured"), http.StatusInternalServerError)
+			return
+		}
+
 		fileLocation, err := extractFileFromRequest(request)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			encodeErr := json.NewEncoder(w).Encode(ErrorResponse{Message: err.Error() + "\nTrying to recover from fatal error, try again in a few minutes..."})
-			if encodeErr != nil {
-				log.Printf("Failed to encode error message into JSON: %s\n", encodeErr)
-			}
-			log.Fatal("Critical error encountered, exiting the app...")
+			handleError(w, err, http.StatusInternalServerError)
+			return
 		}
 		defer func() {
 			err = os.Remove(fileLocation)
@@ -78,45 +99,40 @@ func HandleDatabaseUpdateRequest(handler database.DatabaseHandler) http.HandlerF
 			}
 		}()
 
-		connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			os.Getenv("POSTGRES_HOSTNAME"),
-			os.Getenv("POSTGRES_PORT"),
-			os.Getenv("POSTGRES_USER"),
-			os.Getenv("POSTGRES_PASSWORD"),
-			os.Getenv("POSTGRES_DB"))
+		ctx, cancel := context.WithTimeout(request.Context(), requestTimeout)
+		defer cancel()
 
-		if err = handler.Connect(connectionString); err != nil {
+		file, err := os.Open(fileLocation)
+		if err != nil {
 			handleError(w, err, http.StatusInternalServerError)
 			return
 		}
 		defer func() {
-			err = handler.Disconnect()
-			if err != nil {
-				log.Printf("failed to disconnect from database: %s\n", err)
+			if closeErr := file.Close(); closeErr != nil {
+				log.Printf("failed to close upload file: %s", closeErr)
 			}
 		}()
 
-		fields := []database.TableField{
-			{Name: "name", Type: "TEXT"},
-			{Name: "barcode", Type: "TEXT"},
-			{Name: "price", Type: "TEXT"},
-			{Name: "unit_of_measure", Type: "TEXT"},
-			{Name: "unit_of_measure_koef", Type: "TEXT"},
-			{Name: "stock", Type: "TEXT"},
-		}
+		stream, parseErrors := catalogParser.ParseStream(file)
 
-		if err = handler.DropTableIfExists(os.Getenv("DB_TABLE_NAME")); err != nil {
-			handleError(w, err, http.StatusInternalServerError)
-			return
-		}
+		importErr := make(chan error, 1)
+		go func() {
+			importErr <- handler.ImportCatalog(ctx, stream)
+		}()
 
-		if err = handler.CreateTable(os.Getenv("DB_TABLE_NAME"), fields); err != nil {
-			handleError(w, err, http.StatusInternalServerError)
-			return
-		}
-
-		if err = handler.ImportCSV(os.Getenv("DB_TABLE_NAME"), fileLocation, os.Getenv("DB_DELIMITER")); err != nil {
-			handleError(w, err, http.StatusInternalServerError)
+		select {
+		case err = <-importErr:
+			if err != nil {
+				handleError(w, err, http.StatusInternalServerError)
+				return
+			}
+		case parseErr, ok := <-parseErrors:
+			if ok && parseErr != nil {
+				handleError(w, parseErr, http.StatusInternalServerError)
+				return
+			}
+		case <-ctx.Done():
+			handleError(w, ctx.Err(), http.StatusRequestTimeout)
 			return
 		}
 

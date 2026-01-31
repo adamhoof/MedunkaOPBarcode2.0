@@ -29,13 +29,13 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 #### What is a "station"
 
 - custom-made hardware containing network enabled device, barcode reader and a display, enclosed in a 3D printed box
-- displays product information obtained from main server via [mqtt-database-api](#mqtt-database-api) which allows light and efficient communication
+- displays product information obtained via [mqtt-database-api](#mqtt-database-api) which allows light and efficient communication
 
 ---
   
 #### mqtt-database-api
 
-- database API layer using the MQTT protocol, so that [stations](#what-is-a-station) can request data
+- database API layer using the MQTT protocol, [stations](#what-is-a-station) request data from it
 - prevents incorrect queries
 - removes the burden of data querying for small, not very powerful devices like stations
   
@@ -44,7 +44,7 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 #### http-database-update-server
 
 - HTTP server that performs updates of product database on request
-- listens for .mdb or .csv files on /update topic, creates database from the file
+- listens for .mdb /update endpoint, parses it
   
 ---
 

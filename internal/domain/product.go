@@ -1,7 +1,8 @@
-package product_data
+package domain
 
-type ProductData struct {
+type Product struct {
 	Name              string `json:"name"`
+	Barcode           string `json:"-"`
 	Price             string `json:"price"`
 	Stock             string `json:"stock"`
 	UnitOfMeasure     string `json:"unitOfMeasure"`
