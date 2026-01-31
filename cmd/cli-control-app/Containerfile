@@ -1,0 +1,25 @@
+FROM golang:1.23 as builder
+
+LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY ./cmd/cli-control-app ./cmd/cli-control-app
+COPY ./internal ./internal
+COPY ./internal/mqtt-client ./internal/mqtt-client
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/cli-control-app/main.go
+
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y mdbtools && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /root/
+
+COPY --from=builder /app/main .
+
+CMD ["./main"]

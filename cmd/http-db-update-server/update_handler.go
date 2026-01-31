@@ -1,4 +1,4 @@
-package database_update
+package main
 
 import (
 	"context"

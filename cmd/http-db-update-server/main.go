@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/adamhoof/MedunkaOPBarcode2.0/http-database-update-server/pkg/database-update"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/parser"
 )
@@ -27,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc(os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), database_update.HandleDatabaseUpdateRequest(postgreSQLHandler, mmdbParser))
+	http.HandleFunc(os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdateRequest(postgreSQLHandler, mmdbParser))
 
 	log.Printf("Starting server on %s:%s", "0.0.0.0", os.Getenv("HTTP_SERVER_PORT"))
 

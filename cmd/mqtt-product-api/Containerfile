@@ -1,0 +1,24 @@
+FROM --platform=${BUILDPLATFORM} golang:1.23 as builder
+
+LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY ./cmd/mqtt-product-api ./cmd/mqtt-product-api
+COPY ./internal ./internal
+
+ARG TARGETARCH
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH:-amd64} go build -a -installsuffix cgo -o main ./cmd/mqtt-product-api/main.go
+
+FROM --platform=${BUILDPLATFORM} scratch
+
+COPY --from=builder /app/main .
+
+EXPOSE 1883
+
+CMD ["./main"]

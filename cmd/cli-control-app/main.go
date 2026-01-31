@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/cli-control-app/pkg/commands"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/cli-control-app/pkg/device_controller"
 	"log"
 )
 
@@ -38,11 +36,11 @@ func main() {
 		fmt.Println()
 		switch input {
 		case "upd":
-			if err := commands.DatabaseUpdate(); err != nil {
+			if err := DatabaseUpdate(); err != nil {
 				log.Println(err)
 			}
 		case "tmqtt":
-			commands.MQTTProductDataRequestTest("mqtt_test", "8595020340103", true)
+			MQTTProductDataRequestTest("mqtt_test", "8595020340103", true)
 		case "cdev":
 			fmt.Print("Which device do you want to control?: ")
 			if _, err := fmt.Scanln(&input); err != nil {
@@ -50,7 +48,7 @@ func main() {
 				continue
 			}
 			// TODO search for device, if it does exist, enter function
-			device_controller.EnterDeviceControlMode(input)
+			EnterDeviceControlMode(input)
 		case "ls":
 			printAllCommands(availableCommands)
 		default:

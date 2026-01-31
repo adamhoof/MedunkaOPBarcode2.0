@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-client"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/mqtt-database-api/pkg/api"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/mqtt-client"
 )
 
 func main() {
@@ -25,7 +24,7 @@ func main() {
 	mqttClient := mqtt_client.CreateDefault("mqttDatabaseAPI")
 	mqtt_client.ConnectDefault(&mqttClient)
 
-	token := mqttClient.Subscribe(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, api.HandleProductDataRequest(postgresqlHandler))
+	token := mqttClient.Subscribe(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, HandleProductDataRequest(postgresqlHandler))
 	if token.WaitTimeout(2*time.Second) && token.Error() != nil {
 		log.Fatal(token.Error())
 	}
