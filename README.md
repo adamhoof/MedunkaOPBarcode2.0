@@ -10,8 +10,8 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 
 ### Technologies
 #### Protocols: HTTP, MQTT
-#### Devices: ESP32, Raspberry Pi
-#### Languages: Go, C, C++, Bash
+#### Devices: Raspberry Pi
+#### Languages: Go, C, Bash
 #### Database: PostgreSQL
 #### MQTT broker: Mosquitto
 #### Container engine and orchestrator: Docker with docker compose (used for PostgreSQL, Mosquitto, mqtt-database-api, http-database-update-server, cli-control-app)
@@ -24,7 +24,6 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 - [http-database-update-server](#http-database-update-server)
 - [cli-control-app](#cli-control-app)
 - [product-data-response-displayer-rpi](#rpi-station)
-- [product-data-response-displayer-esp32](#esp32-station)
 
 ---
 
@@ -41,17 +40,11 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 
 ---
   
-#### esp32-station
-
-- type of [station](#what-is-a-station) powered by ESP32
-
----
-  
 #### mqtt-database-api
 
 - database API layer using the MQTT protocol, so that [stations](#what-is-a-station) can request data
 - prevents incorrect queries
-- removes the burden of data querying for small, not very powerful devices like [ESP32 station](#product-data-response-displayer-esp32)
+- removes the burden of data querying for small, not very powerful devices like stations
   
 ---
 
