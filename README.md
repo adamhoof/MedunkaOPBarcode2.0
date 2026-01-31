@@ -23,7 +23,6 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 - [mqtt-database-api](#mqtt-database-api)
 - [http-database-update-server](#http-database-update-server)
 - [cli-control-app](#cli-control-app)
-- [product-data-response-displayer-rpi](#rpi-station)
 
 ---
 
@@ -31,12 +30,6 @@ https://github.com/user-attachments/assets/53558eb1-a326-4118-b87e-26fe000d4632
 
 - custom-made hardware containing network enabled device, barcode reader and a display, enclosed in a 3D printed box
 - displays product information obtained from main server via [mqtt-database-api](#mqtt-database-api) which allows light and efficient communication
-
----
-
-#### rpi-station
-
-- type of [station](#what-is-a-station) powered by Raspberry Pi
 
 ---
   
