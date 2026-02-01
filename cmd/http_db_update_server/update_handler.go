@@ -3,144 +3,105 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/parser"
+	"github.com/google/uuid"
 )
 
-type ErrorResponse struct {
-	Message string `json:"message"`
-}
+const MaxUploadSize = 5 * 1024 * 1024 * 1024
 
-func (e ErrorResponse) Error() string {
-	return e.Message
-}
-
-type SuccessResponse struct {
-	Message string `json:"message"`
-}
-
-const (
-	requestTimeout = 15 * time.Minute
-)
-
-func extractFileFromRequest(request *http.Request) (string, error) {
-	receivedFile, _, err := request.FormFile("file")
-	if err != nil {
-		return "", fmt.Errorf("failed to read multipart file from request: %s", err)
-	}
-	defer func() {
-		err = receivedFile.Close()
-		if err != nil {
-			log.Printf("failed to close received multipart file: %s\n", err)
-		}
-	}()
-
-	targetPath := os.Getenv("HTTP_SERVER_CSV_FILE_PATH")
-	if strings.TrimSpace(targetPath) == "" {
-		return "", errors.New("HTTP_SERVER_CSV_FILE_PATH is not set")
-	}
-
-	if err = os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
-		return "", fmt.Errorf("failed to create directory for upload: %w", err)
-	}
-
-	file, err := os.Create(targetPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file: %s", err)
-	}
-
-	err = file.Chmod(0666)
-	if err != nil {
-		return "", fmt.Errorf("failed to change permissions of file %s: %s", file.Name(), err)
-	}
-
-	if _, err = io.Copy(file, receivedFile); err != nil {
-		return "", fmt.Errorf("failed to write file %s: %s", file.Name(), err)
-	}
-
-	return file.Name(), nil
-}
-
-func handleError(w http.ResponseWriter, err error, statusCode int) {
-	w.WriteHeader(statusCode)
-	err = json.NewEncoder(w).Encode(ErrorResponse{Message: err.Error()})
-	if err != nil {
-		log.Printf("failed to encode message into json: %s\n", err)
-	}
-}
-func HandleDatabaseUpdateRequest(handler database.Handler, catalogParser parser.CatalogParser) http.HandlerFunc {
-	return func(w http.ResponseWriter, request *http.Request) {
+// HandleDatabaseUpdate accepts a multipart file upload, identifies the correct parser via factory,
+// saves the stream to a temporary file, and spawns a background worker to process the import.
+func HandleDatabaseUpdate(db database.Handler, jobStore *sync.Map) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		if catalogParser == nil {
-			handleError(w, errors.New("catalog parser is not configured"), http.StatusInternalServerError)
+		r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "file too large", http.StatusBadRequest)
 			return
 		}
 
-		fileLocation, err := extractFileFromRequest(request)
+		file, header, err := r.FormFile("file")
 		if err != nil {
-			handleError(w, err, http.StatusInternalServerError)
+			http.Error(w, "missing file", http.StatusBadRequest)
 			return
 		}
-		defer func() {
-			err = os.Remove(fileLocation)
-			if err != nil {
-				log.Printf("failed to remove file: %s\n", err)
-			}
-		}()
+		defer file.Close()
 
-		ctx, cancel := context.WithTimeout(request.Context(), requestTimeout)
-		defer cancel()
-
-		file, err := os.Open(fileLocation)
+		selectedParser, err := parser.New(header.Filename)
 		if err != nil {
-			handleError(w, err, http.StatusInternalServerError)
-			return
-		}
-		defer func() {
-			if closeErr := file.Close(); closeErr != nil {
-				log.Printf("failed to close upload file: %s", closeErr)
-			}
-		}()
-
-		stream, parseErrors := catalogParser.ParseStream(file)
-
-		importErr := make(chan error, 1)
-		go func() {
-			importErr <- handler.ImportCatalog(ctx, stream)
-		}()
-
-		select {
-		case err = <-importErr:
-			if err != nil {
-				handleError(w, err, http.StatusInternalServerError)
-				return
-			}
-		case parseErr, ok := <-parseErrors:
-			if ok && parseErr != nil {
-				handleError(w, parseErr, http.StatusInternalServerError)
-				return
-			}
-		case <-ctx.Done():
-			handleError(w, ctx.Err(), http.StatusRequestTimeout)
+			http.Error(w, fmt.Sprintf("invalid file type: %v", err), http.StatusBadRequest)
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
-		response := SuccessResponse{Message: "All done!"}
+		jobID := uuid.New().String()
+		jobStore.Store(jobID, JobStatus{State: "pending", Message: "Upload starting"})
 
-		if err = json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("failed to write to client: %s\n", err)
+		ext := filepath.Ext(header.Filename)
+		tempFile, err := os.CreateTemp("", fmt.Sprintf("upload_%s_*%s", jobID, ext))
+		if err != nil {
+			jobStore.Store(jobID, JobStatus{State: "failed", Message: "Disk error"})
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
 		}
+
+		if _, err := io.Copy(tempFile, file); err != nil {
+			tempFile.Close()
+			os.Remove(tempFile.Name())
+			jobStore.Store(jobID, JobStatus{State: "failed", Message: "Upload interrupted"})
+			http.Error(w, "upload failed", http.StatusInternalServerError)
+			return
+		}
+		tempFile.Close()
+
+		go processImportJob(db, selectedParser, tempFile.Name(), jobID, jobStore)
+
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{
+			"job_id":  jobID,
+			"message": "Upload accepted",
+		})
 	}
+}
+
+// processImportJob runs in a background goroutine to parse the saved file and bulk import it into the database,
+// updating the job status in the shared memory store throughout the process.
+func processImportJob(db database.Handler, p parser.CatalogParser, filePath string, jobID string, jobStore *sync.Map) {
+	defer os.Remove(filePath)
+
+	jobStore.Store(jobID, JobStatus{State: "processing", Message: "Importing data..."})
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: "Failed to open file"})
+		return
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+
+	stream, parseErrors := p.ParseStream(file)
+
+	err = db.ImportCatalog(ctx, stream)
+	if err != nil {
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("Database error: %v", err)})
+		return
+	}
+
+	if parseErr := <-parseErrors; parseErr != nil {
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("Parsing error: %v", parseErr)})
+		return
+	}
+
+	jobStore.Store(jobID, JobStatus{State: "completed", Message: "Import finished successfully"})
 }

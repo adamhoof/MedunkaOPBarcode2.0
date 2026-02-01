@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/parser"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 )
 
@@ -21,12 +21,10 @@ func main() {
 		}
 	}()
 
-	mmdbParser, err := parser.NewMMDB()
-	if err != nil {
-		log.Fatal(err)
-	}
+	jobStore := &sync.Map{}
 
-	http.HandleFunc(utils.ReadEnvOrFail("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdateRequest(postgreSQLHandler, mmdbParser))
+	http.HandleFunc(utils.ReadEnvOrFail("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdate(postgreSQLHandler, jobStore))
+	http.HandleFunc("/job-status", HandleJobStatus(jobStore))
 
 	host := utils.ReadEnvOrFail("HTTP_SERVER_HOST")
 	port := utils.ReadEnvOrFail("HTTP_SERVER_PORT")
