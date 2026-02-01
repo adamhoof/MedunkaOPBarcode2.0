@@ -12,10 +12,13 @@ import (
 
 // CreateSecureMQTTClient returns a fully configured client or panics.
 // It does NOT connect (Connect is a separate step), but it prepares the configuration.
-func CreateSecureMQTTClient(clientID string) mqtt.Client {
+func CreateSecureMQTTClient() mqtt.Client {
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(ReadEnvOrFail("MQTT_SERVER_AND_PORT"))
-	opts.SetClientID(clientID)
+	protocol := GetEnvOrPanic("MQTT_PROTOCOL")
+	host := GetEnvOrPanic("MQTT_HOST")
+	port := GetEnvOrPanic("MQTT_PORT")
+	opts.AddBroker(fmt.Sprintf("%s://%s:%s", protocol, host, port))
+	opts.SetClientID(GetEnvOrPanic("MQTT_CLIENT_ID"))
 	opts.SetUsername(ReadSecretOrFail("MQTT_USER_FILE"))
 	opts.SetPassword(ReadSecretOrFail("MQTT_PASSWORD_FILE"))
 
@@ -34,12 +37,12 @@ func CreateSecureMQTTClient(clientID string) mqtt.Client {
 }
 
 func generateTLSConfig() (*tls.Config, error) {
-	clientCert, err := tls.LoadX509KeyPair(ReadEnvOrFail("TLS_CERT_PATH"), ReadEnvOrFail("TLS_KEY_PATH"))
+	clientCert, err := tls.LoadX509KeyPair(GetEnvOrPanic("TLS_CERT_PATH"), GetEnvOrPanic("TLS_KEY_PATH"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client keypair: %w", err)
 	}
 
-	caBytes, err := os.ReadFile(ReadEnvOrFail("TLS_CA_PATH"))
+	caBytes, err := os.ReadFile(GetEnvOrPanic("TLS_CA_PATH"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert: %w", err)
 	}
@@ -62,5 +65,5 @@ func ConnectOrFail(client mqtt.Client) {
 	if !token.WaitTimeout(5*time.Second) || token.Error() != nil {
 		panic(fmt.Sprintf("CRITICAL: MQTT connection failed: %v", token.Error()))
 	}
-	fmt.Println("✅ MQTT Connected Securely")
+	fmt.Println("MQTT Connected")
 }

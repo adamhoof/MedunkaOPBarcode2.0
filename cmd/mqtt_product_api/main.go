@@ -3,33 +3,55 @@ package main
 import (
 	"log"
 	"os"
-	"sync"
-	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func main() {
-	postgresqlHandler, err := database.New("postgres")
+	dbHandler, err := database.New("postgres")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() {
-		if closeErr := postgresqlHandler.Close(); closeErr != nil {
+		if closeErr := dbHandler.Close(); closeErr != nil {
 			log.Printf("failed to close database connection: %s", closeErr)
 		}
 	}()
 
-	mqttClient := utils.CreateSecureMQTTClient("mqttDatabaseAPI")
+	mqttClient := utils.CreateSecureMQTTClient()
 	utils.ConnectOrFail(mqttClient)
 
-	token := mqttClient.Subscribe(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, HandleProductDataRequest(postgresqlHandler))
-	if token.WaitTimeout(2*time.Second) && token.Error() != nil {
+	jobQueue := make(chan mqtt.Message, utils.GetEnvAsInt("APP_JOB_QUEUE_SIZE"))
+	workerCount := utils.GetEnvAsInt("APP_WORKER_COUNT")
+	workerTimeout := utils.GetEnvAsDuration("APP_DB_TIMEOUT")
+	requestTopic := utils.GetEnvOrPanic("MQTT_TOPIC_REQUEST")
+
+	for i := 0; i < workerCount; i++ {
+		go processJobs(dbHandler, mqttClient, jobQueue, workerTimeout)
+	}
+
+	token := mqttClient.Subscribe(requestTopic, 1, func(client mqtt.Client, msg mqtt.Message) {
+		select {
+		case jobQueue <- msg:
+		default:
+			log.Printf("WARNING: System overloaded. Dropping request for topic: %s", msg.Topic())
+		}
+	})
+
+	if token.Wait() && token.Error() != nil {
 		log.Fatal(token.Error())
 	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	wg.Wait()
+	log.Printf("Service started with %d workers", workerCount)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	log.Println("Shutting down...")
+	close(jobQueue)
 }
