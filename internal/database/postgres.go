@@ -9,7 +9,7 @@ import (
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 const (
@@ -143,13 +143,13 @@ func (p *Postgres) createTable(ctx context.Context) error {
 	defer cancel()
 
 	query := fmt.Sprintf(`CREATE TABLE %s (
-name TEXT,
-barcode TEXT,
-price TEXT,
-unit_of_measure TEXT,
-unit_of_measure_koef TEXT,
-stock TEXT
-);`, p.tableName)
+								 name TEXT,
+								 barcode TEXT,
+								 price TEXT,
+								 unit_of_measure TEXT,
+								 unit_of_measure_koef TEXT,
+								 stock TEXT
+								 );`, p.tableName)
 
 	_, err := p.db.ExecContext(queryCtx, query)
 	if err != nil {
@@ -159,38 +159,47 @@ stock TEXT
 }
 
 func (p *Postgres) copyStream(ctx context.Context, stream <-chan domain.Product) error {
-	transaction, err := p.db.BeginTx(ctx, nil)
+	txn, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
-	stmt, err := transaction.PrepareContext(ctx, fmt.Sprintf(
-		"INSERT INTO %s (name, barcode, price, unit_of_measure, unit_of_measure_koef, stock) VALUES ($1, $2, $3, $4, $5, $6)",
+	stmt, err := txn.PrepareContext(ctx, pq.CopyIn(
 		p.tableName,
+		"name",
+		"barcode",
+		"price",
+		"unit_of_measure",
+		"unit_of_measure_koef",
+		"stock",
 	))
 	if err != nil {
-		_ = transaction.Rollback()
-		return fmt.Errorf("failed to prepare insert statement: %w", err)
+		_ = txn.Rollback()
+		return fmt.Errorf("failed to prepare copy statement: %w", err)
 	}
-	defer func() {
-		_ = stmt.Close()
-	}()
+	defer stmt.Close()
 
 	for {
 		select {
 		case <-ctx.Done():
-			_ = transaction.Rollback()
+			_ = txn.Rollback()
 			return ctx.Err()
 		case record, ok := <-stream:
 			if !ok {
-				if err := transaction.Commit(); err != nil {
+				if _, err := stmt.Exec(); err != nil {
+					_ = txn.Rollback()
+					return fmt.Errorf("failed to flush copy data: %w", err)
+				}
+
+				if err := txn.Commit(); err != nil {
 					return fmt.Errorf("failed to commit transaction: %w", err)
 				}
 				return nil
 			}
-			if _, err := stmt.ExecContext(ctx, record.Name, record.Barcode, record.Price, record.UnitOfMeasure, record.UnitOfMeasureCoef, record.Stock); err != nil {
-				_ = transaction.Rollback()
-				return fmt.Errorf("failed to insert product data: %w", err)
+
+			if _, err := stmt.Exec(record.Name, record.Barcode, record.Price, record.UnitOfMeasure, record.UnitOfMeasureCoef, record.Stock); err != nil {
+				_ = txn.Rollback()
+				return fmt.Errorf("failed to buffer copy data: %w", err)
 			}
 		}
 	}

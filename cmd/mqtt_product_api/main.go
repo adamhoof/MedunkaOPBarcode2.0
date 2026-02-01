@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	postgresqlHandler, err := database.NewPostgres()
+	postgresqlHandler, err := database.New("postgres")
 	if err != nil {
 		log.Fatal(err)
 	}
