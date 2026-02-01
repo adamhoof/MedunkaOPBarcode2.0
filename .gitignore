@@ -9,4 +9,4 @@ CMakeListsPrivate.txt
 .pio
 cmake-build-*/
 credentials.h
-
+certs

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
-	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/mqtt-client"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -116,8 +116,8 @@ type LightCommand struct {
 }
 
 func TurnOnLight(topic string) {
-	mqttClient := mqtt_client.CreateDefault("light_controller")
-	mqtt_client.ConnectDefault(&mqttClient)
+	mqttClient := utils.CreateSecureMQTTClient("light_controller")
+	utils.ConnectOrFail(mqttClient)
 
 	lightCommand := LightCommand{State: true}
 	lightCommandAsJSON, err := json.Marshal(&lightCommand)
@@ -139,8 +139,8 @@ func TurnOnLight(topic string) {
 }
 
 func TurnOffLight(topic string) {
-	mqttClient := mqtt_client.CreateDefault("light_controller")
-	mqtt_client.ConnectDefault(&mqttClient)
+	mqttClient := utils.CreateSecureMQTTClient("light_controller")
+	utils.ConnectOrFail(mqttClient)
 
 	lightCommand := LightCommand{State: false}
 	lightCommandAsJSON, err := json.Marshal(&lightCommand)
@@ -162,8 +162,8 @@ func TurnOffLight(topic string) {
 }
 
 func UpdateFirmware(topic string) {
-	mqttClient := mqtt_client.CreateDefault("firmware_updater")
-	mqtt_client.ConnectDefault(&mqttClient)
+	mqttClient := utils.CreateSecureMQTTClient("firmware_updater")
+	utils.ConnectOrFail(mqttClient)
 
 	for {
 		token := mqttClient.Publish(topic, 1, false, "true")
@@ -178,8 +178,8 @@ func UpdateFirmware(topic string) {
 }
 
 func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacritics bool) {
-	mqttClient := mqtt_client.CreateDefault(clientTopic)
-	mqtt_client.ConnectDefault(&mqttClient)
+	mqttClient := utils.CreateSecureMQTTClient(clientTopic)
+	utils.ConnectOrFail(mqttClient)
 
 	token := mqttClient.Subscribe(clientTopic, 0, func(client mqtt.Client, message mqtt.Message) {
 		log.Printf("Received request at topic: %s\n", message.Topic())

@@ -5,12 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 	_ "github.com/lib/pq"
 )
 
@@ -21,31 +19,24 @@ const (
 type Postgres struct {
 	db        *sql.DB
 	tableName string
+	config    postgresConfig
 }
 
 func NewPostgres() (Handler, error) {
-	requiredEnv := []string{
-		"POSTGRES_HOSTNAME",
-		"POSTGRES_PORT",
-		"POSTGRES_USER",
-		"POSTGRES_PASSWORD",
-		"POSTGRES_DB",
-		"DB_TABLE_NAME",
-	}
-
-	missing := missingEnv(requiredEnv)
-	if len(missing) > 0 {
-		log.Printf("missing required env vars: %s", strings.Join(missing, ", "))
-		return nil, fmt.Errorf("missing required env vars: %s", strings.Join(missing, ", "))
+	config, err := parsePostgresConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	connectionString := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("POSTGRES_HOSTNAME"),
-		os.Getenv("POSTGRES_PORT"),
-		os.Getenv("POSTGRES_USER"),
-		os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_DB"),
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s sslrootcert=%s",
+		config.Host,
+		config.Port,
+		config.User,
+		config.Password,
+		config.Database,
+		config.SSLMode,
+		config.CAPath,
 	)
 
 	db, err := sql.Open("postgres", connectionString)
@@ -58,17 +49,31 @@ func NewPostgres() (Handler, error) {
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	return &Postgres{db: db, tableName: os.Getenv("DB_TABLE_NAME")}, nil
+	return &Postgres{db: db, tableName: config.TableName, config: config}, nil
 }
 
-func (p *Postgres) Close() error {
-	if p.db == nil {
-		return nil
-	}
-	if err := p.db.Close(); err != nil {
-		return fmt.Errorf("failed to disconnect from db: %w", err)
-	}
-	return nil
+type postgresConfig struct {
+	Host      string
+	Port      string
+	Database  string
+	TableName string
+	User      string
+	Password  string
+	SSLMode   string
+	CAPath    string
+}
+
+func parsePostgresConfig() (postgresConfig, error) {
+	return postgresConfig{
+		Host:      utils.ReadEnvOrFail("POSTGRES_HOSTNAME"),
+		Port:      utils.ReadEnvOrFail("POSTGRES_PORT"),
+		Database:  utils.ReadEnvOrFail("POSTGRES_DB"),
+		TableName: utils.ReadEnvOrFail("DB_TABLE_NAME"),
+		User:      utils.ReadSecretOrFail("DB_USER_FILE"),
+		Password:  utils.ReadSecretOrFail("DB_PASSWORD_FILE"),
+		SSLMode:   utils.ReadEnvOrFail("POSTGRES_SSLMODE"),
+		CAPath:    utils.ReadEnvOrFail("TLS_CA_PATH"),
+	}, nil
 }
 
 func (p *Postgres) Fetch(ctx context.Context, barcode string) (*domain.Product, error) {
@@ -110,6 +115,16 @@ func (p *Postgres) ImportCatalog(ctx context.Context, stream <-chan domain.Produ
 	}
 
 	return p.copyStream(ctx, stream)
+}
+
+func (p *Postgres) Close() error {
+	if p.db == nil {
+		return nil
+	}
+	if err := p.db.Close(); err != nil {
+		return fmt.Errorf("failed to disconnect from db: %w", err)
+	}
+	return nil
 }
 
 func (p *Postgres) dropTable(ctx context.Context) error {
@@ -179,14 +194,4 @@ func (p *Postgres) copyStream(ctx context.Context, stream <-chan domain.Product)
 			}
 		}
 	}
-}
-
-func missingEnv(keys []string) []string {
-	missing := make([]string, 0)
-	for _, key := range keys {
-		if strings.TrimSpace(os.Getenv(key)) == "" {
-			missing = append(missing, key)
-		}
-	}
-	return missing
 }

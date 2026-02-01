@@ -1,0 +1,142 @@
+secrets:
+  server_key:
+    external: true
+  db_user:
+    external: true
+  db_password:
+    external: true
+  mqtt_user:
+    external: true
+  mqtt_password:
+    external: true
+  mqtt_passwd_db:
+    external: true
+
+networks:
+  MOB_network:
+
+volumes:
+  postgres_data:
+  mosquitto_data:
+  mosquitto_log:
+  shared_data:
+
+services:
+  postgres_db:
+    container_name: postgres_db
+    image: docker.io/library/postgres:18.1-trixie
+    restart: unless-stopped
+    secrets:
+      - server_key
+      - db_user
+      - db_password
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/db_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=products_db
+      - POSTGRES_SSL_CERT_FILE=/certs/server.crt
+      - POSTGRES_SSL_KEY_FILE=/run/secrets/server_key
+      - POSTGRES_SSLMODE=verify-full
+      - POSTGRES_SSLROOTCERT=/certs/ca.crt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - shared_data:/tmp
+      - ./certs/server.crt:/certs/server.crt:ro
+      - ./certs/ca.crt:/certs/ca.crt:ro
+    networks:
+      - MOB_network
+    command: >
+      postgres 
+      -c ssl=on 
+      -c ssl_cert_file=/certs/server.crt 
+      -c ssl_key_file=/run/secrets/server_key
+
+  mosquitto_broker:
+    container_name: mosquitto_broker
+    image: docker.io/eclipse-mosquitto:2.1.0-alpine
+    restart: unless-stopped
+    secrets:
+      - server_key
+      - mqtt_passwd_db
+    ports:
+      - "8883:8883"
+    volumes:
+      - ./mosquitto-config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+      - ./certs/server.crt:/mosquitto/certs/server.crt:ro
+    networks:
+      - MOB_network
+
+  http_db_update_server:
+    container_name: http_db_update_server
+    build:
+      context: .
+      dockerfile: ./cmd/http_db_update_server/Containerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres_db
+    secrets:
+      - server_key
+      - db_user
+      - db_password
+    environment:
+      - TLS_CERT_PATH=/app/certs/server.crt
+      - TLS_KEY_PATH=/run/secrets/server_key
+      - TLS_CA_PATH=/app/certs/ca.crt
+      - DB_USER_FILE=/run/secrets/db_user
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_HOSTNAME=postgres_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=products_db
+      - DB_TABLE_NAME=products
+      - HTTP_SERVER_HOST=0.0.0.0
+      - HTTP_SERVER_PORT=8443
+      - HTTP_SERVER_UPDATE_ENDPOINT=/update-db
+      - HTTP_SERVER_CSV_FILE_PATH=/tmp/import.csv
+    ports:
+      - "8443:8443"
+    volumes:
+      - shared_data:/tmp
+      - ./certs/server.crt:/app/certs/server.crt:ro
+      - ./certs/ca.crt:/app/certs/ca.crt:ro
+    networks:
+      - MOB_network
+
+  mqtt_product_api:
+    container_name: mqtt_product_api
+    build:
+      context: .
+      dockerfile: ./cmd/mqtt_product_api/Containerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres_db
+      - mosquitto_broker
+    secrets:
+      - server_key
+      - db_user
+      - db_password
+      - mqtt_user
+      - mqtt_password
+    environment:
+      - TLS_CERT_PATH=/app/certs/server.crt
+      - TLS_KEY_PATH=/run/secrets/server_key
+      - TLS_CA_PATH=/app/certs/ca.crt
+      - DB_USER_FILE=/run/secrets/db_user
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - MQTT_USER_FILE=/run/secrets/mqtt_user
+      - MQTT_PASSWORD_FILE=/run/secrets/mqtt_password
+      - POSTGRES_HOSTNAME=postgres_db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=products_db
+      - MQTT_SERVER_AND_PORT=tls://mosquitto_broker:8883
+      - MQTT_PRODUCT_DATA_REQUEST=product/request
+      - LIGHT_CONTROL_TOPIC=station/light
+      - FIRMWARE_UPDATE_TOPIC=station/firmware
+    volumes:
+      - ./certs/server.crt:/app/certs/server.crt:ro
+      - ./certs/ca.crt:/app/certs/ca.crt:ro
+    networks:
+      - MOB_network

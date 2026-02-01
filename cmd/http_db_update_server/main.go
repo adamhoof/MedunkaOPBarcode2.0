@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/parser"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 )
 
 func main() {
@@ -26,11 +26,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc(os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdateRequest(postgreSQLHandler, mmdbParser))
+	http.HandleFunc(utils.ReadEnvOrFail("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdateRequest(postgreSQLHandler, mmdbParser))
 
-	log.Printf("Starting server on %s:%s", "0.0.0.0", os.Getenv("HTTP_SERVER_PORT"))
+	host := utils.ReadEnvOrFail("HTTP_SERVER_HOST")
+	port := utils.ReadEnvOrFail("HTTP_SERVER_PORT")
+	certPath := utils.ReadEnvOrFail("TLS_CERT_PATH")
+	keyPath := utils.ReadEnvOrFail("TLS_KEY_PATH")
 
-	err = http.ListenAndServe(fmt.Sprintf("%s:%s", "0.0.0.0", os.Getenv("HTTP_SERVER_PORT")), nil)
+	log.Printf("Starting server on %s:%s", host, port)
+
+	err = http.ListenAndServeTLS(fmt.Sprintf("%s:%s", host, port), certPath, keyPath, nil)
 	if err != nil {
 		log.Fatal("unable to start")
 	}
