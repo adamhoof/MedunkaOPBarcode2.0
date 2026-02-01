@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 )
 
 type MMDB struct {
@@ -18,11 +19,7 @@ type MMDB struct {
 }
 
 func NewMMDB() (CatalogParser, error) {
-	value := strings.TrimSpace(os.Getenv("MMDB_TABLE_NAME"))
-	if value == "" {
-		return nil, fmt.Errorf("MMDB_TABLE_NAME is not set")
-	}
-	return &MMDB{table: value}, nil
+	return &MMDB{table: utils.GetEnvOrPanic("MMDB_TABLE_NAME")}, nil
 }
 
 func (parser *MMDB) ParseStream(r io.Reader) (<-chan domain.Product, <-chan error) {
