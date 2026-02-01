@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 )
 
 type DeviceCommand struct {
@@ -16,7 +15,7 @@ func printAllDeviceCommands(availableCommands []DeviceCommand) {
 		fmt.Printf("%s: %s\n", command.name, command.description)
 	}
 }
-func EnterDeviceControlMode(deviceName string) {
+func EnterDeviceControlMode(deviceName string, lightControlTopic string, firmwareUpdateTopic string) {
 	availableCommands := []DeviceCommand{
 		{"ls", "list all available commands with their description"},
 		{"lon", "turn on light of device"},
@@ -39,13 +38,13 @@ func EnterDeviceControlMode(deviceName string) {
 		case "ls":
 			printAllDeviceCommands(availableCommands)
 		case "lon":
-			TurnOnLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
+			TurnOnLight(deviceName + "/" + lightControlTopic)
 		//send mqtt command
 		case "loff":
-			TurnOffLight(deviceName + "/" + os.Getenv("LIGHT_CONTROL_TOPIC"))
+			TurnOffLight(deviceName + "/" + lightControlTopic)
 			//send mqtt command
 		case "firmwareUpdate":
-			UpdateFirmware(deviceName + "/" + os.Getenv("FIRMWARE_UPDATE_TOPIC"))
+			UpdateFirmware(deviceName + "/" + firmwareUpdateTopic)
 			//send mqtt command
 		case "e":
 			fmt.Printf("It was pleasure to communicate, your %s\n", deviceName)

@@ -21,12 +21,12 @@ type ResponseContent struct {
 	Message string `json:"message"`
 }
 
-func DatabaseUpdate() error {
-	if err := fileReadyToBeUsed(os.Getenv("MDB_PATH")); err != nil {
+func DatabaseUpdate(mdbPath string, httpHost string, httpPort string, httpUpdateEndpoint string) error {
+	if err := fileReadyToBeUsed(mdbPath); err != nil {
 		return fmt.Errorf("file not ready to be used: %w", err)
 	}
 
-	if err := sendFileToServer(os.Getenv("HTTP_SERVER_HOST"), os.Getenv("HTTP_SERVER_PORT"), os.Getenv("HTTP_SERVER_UPDATE_ENDPOINT"), os.Getenv("MDB_PATH")); err != nil {
+	if err := sendFileToServer(httpHost, httpPort, httpUpdateEndpoint, mdbPath); err != nil {
 		return fmt.Errorf("failed to send file to server: %w", err)
 	}
 	return nil
@@ -116,7 +116,7 @@ type LightCommand struct {
 }
 
 func TurnOnLight(topic string) {
-	mqttClient := utils.CreateSecureMQTTClient("light_controller")
+	mqttClient := utils.CreateSecureMQTTClient()
 	utils.ConnectOrFail(mqttClient)
 
 	lightCommand := LightCommand{State: true}
@@ -139,7 +139,7 @@ func TurnOnLight(topic string) {
 }
 
 func TurnOffLight(topic string) {
-	mqttClient := utils.CreateSecureMQTTClient("light_controller")
+	mqttClient := utils.CreateSecureMQTTClient()
 	utils.ConnectOrFail(mqttClient)
 
 	lightCommand := LightCommand{State: false}
@@ -162,7 +162,7 @@ func TurnOffLight(topic string) {
 }
 
 func UpdateFirmware(topic string) {
-	mqttClient := utils.CreateSecureMQTTClient("firmware_updater")
+	mqttClient := utils.CreateSecureMQTTClient()
 	utils.ConnectOrFail(mqttClient)
 
 	for {
@@ -177,8 +177,8 @@ func UpdateFirmware(topic string) {
 	log.Println("mqtt client disconnected")
 }
 
-func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacritics bool) {
-	mqttClient := utils.CreateSecureMQTTClient(clientTopic)
+func MQTTProductDataRequestTest(clientTopic string, topic string, barcode string, includeDiacritics bool) {
+	mqttClient := utils.CreateSecureMQTTClient()
 	utils.ConnectOrFail(mqttClient)
 
 	token := mqttClient.Subscribe(clientTopic, 0, func(client mqtt.Client, message mqtt.Message) {
@@ -208,7 +208,7 @@ func MQTTProductDataRequestTest(clientTopic string, barcode string, includeDiacr
 	}
 
 	for {
-		token = mqttClient.Publish(os.Getenv("MQTT_PRODUCT_DATA_REQUEST"), 1, false, productDataAsJson)
+		token = mqttClient.Publish(topic, 1, false, productDataAsJson)
 		if token.WaitTimeout(5*time.Second) && token.Error() == nil {
 			break
 		}
