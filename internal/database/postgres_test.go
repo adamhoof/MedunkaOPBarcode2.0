@@ -9,21 +9,24 @@ import (
 
 func TestNewPostgresMissingEnv(t *testing.T) {
 	required := []string{
-		"POSTGRES_HOSTNAME",
+		"POSTGRES_HOST",
 		"POSTGRES_PORT",
 		"POSTGRES_DB",
 		"DB_TABLE_NAME",
 		"POSTGRES_SSLMODE",
-		"DB_USER_FILE",
-		"DB_PASSWORD_FILE",
+		"POSTGRES_USER_FILE",
+		"POSTGRES_PASSWORD_FILE",
 		"TLS_CA_PATH",
+		"DB_MAX_OPEN_CONNS",
+		"DB_MAX_IDLE_CONNS",
+		"DB_CONN_MAX_LIFETIME",
 	}
 
 	for _, key := range required {
 		t.Setenv(key, "value")
 	}
 
-	missingKey := "POSTGRES_HOSTNAME"
+	missingKey := "POSTGRES_HOST"
 	t.Setenv(missingKey, "")
 
 	defer func() {

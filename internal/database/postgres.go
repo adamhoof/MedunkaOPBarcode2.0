@@ -23,10 +23,7 @@ type Postgres struct {
 }
 
 func NewPostgres() (Handler, error) {
-	config, err := parsePostgresConfig()
-	if err != nil {
-		return nil, err
-	}
+	config := loadPostgresConfig()
 
 	connectionString := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s sslrootcert=%s",
@@ -44,6 +41,10 @@ func NewPostgres() (Handler, error) {
 		return nil, fmt.Errorf("could not open connection: %w", err)
 	}
 
+	db.SetMaxOpenConns(config.MaxOpenConns)
+	db.SetMaxIdleConns(config.MaxIdleConns)
+	db.SetConnMaxLifetime(config.ConnMaxLifetime)
+
 	if err = db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("database ping failed: %w", err)
@@ -53,27 +54,33 @@ func NewPostgres() (Handler, error) {
 }
 
 type postgresConfig struct {
-	Host      string
-	Port      string
-	Database  string
-	TableName string
-	User      string
-	Password  string
-	SSLMode   string
-	CAPath    string
+	Host            string
+	Port            string
+	Database        string
+	TableName       string
+	User            string
+	Password        string
+	SSLMode         string
+	CAPath          string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
 }
 
-func parsePostgresConfig() (postgresConfig, error) {
+func loadPostgresConfig() postgresConfig {
 	return postgresConfig{
-		Host:      utils.ReadEnvOrFail("POSTGRES_HOSTNAME"),
-		Port:      utils.ReadEnvOrFail("POSTGRES_PORT"),
-		Database:  utils.ReadEnvOrFail("POSTGRES_DB"),
-		TableName: utils.ReadEnvOrFail("DB_TABLE_NAME"),
-		User:      utils.ReadSecretOrFail("DB_USER_FILE"),
-		Password:  utils.ReadSecretOrFail("DB_PASSWORD_FILE"),
-		SSLMode:   utils.ReadEnvOrFail("POSTGRES_SSLMODE"),
-		CAPath:    utils.ReadEnvOrFail("TLS_CA_PATH"),
-	}, nil
+		Host:            utils.GetEnvOrPanic("POSTGRES_HOST"),
+		Port:            utils.GetEnvOrPanic("POSTGRES_PORT"),
+		Database:        utils.GetEnvOrPanic("POSTGRES_DB"),
+		TableName:       utils.GetEnvOrPanic("DB_TABLE_NAME"),
+		User:            utils.ReadSecretOrFail("POSTGRES_USER_FILE"),
+		Password:        utils.ReadSecretOrFail("POSTGRES_PASSWORD_FILE"),
+		SSLMode:         utils.GetEnvOrPanic("POSTGRES_SSLMODE"),
+		CAPath:          utils.GetEnvOrPanic("TLS_CA_PATH"),
+		MaxOpenConns:    utils.GetEnvAsInt("DB_MAX_OPEN_CONNS"),
+		MaxIdleConns:    utils.GetEnvAsInt("DB_MAX_IDLE_CONNS"),
+		ConnMaxLifetime: utils.GetEnvAsDuration("DB_CONN_MAX_LIFETIME"),
+	}
 }
 
 func (p *Postgres) Fetch(ctx context.Context, barcode string) (*domain.Product, error) {
