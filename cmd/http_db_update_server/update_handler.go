@@ -16,15 +16,13 @@ import (
 	"github.com/google/uuid"
 )
 
-const MaxUploadSize = 5 * 1024 * 1024 * 1024
-
 // HandleDatabaseUpdate accepts a multipart file upload, identifies the correct parser via factory,
 // saves the stream to a temporary file, and spawns a background worker to process the import.
-func HandleDatabaseUpdate(db database.Handler, jobStore *sync.Map) http.HandlerFunc {
+func HandleDatabaseUpdate(db database.Handler, jobStore *sync.Map, maxUploadSize int64) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		r.Body = http.MaxBytesReader(w, r.Body, MaxUploadSize)
+		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		if err := r.ParseMultipartForm(32 << 20); err != nil {
 			http.Error(w, "file too large", http.StatusBadRequest)
 			return

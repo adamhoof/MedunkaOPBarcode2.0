@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	postgreSQLHandler, err := database.NewPostgres()
+	postgreSQLHandler, err := database.New("postgres")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,13 +23,15 @@ func main() {
 
 	jobStore := &sync.Map{}
 
-	http.HandleFunc(utils.ReadEnvOrFail("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdate(postgreSQLHandler, jobStore))
+	maxUploadSize := utils.GetEnvAsInt64("HTTP_MAX_UPLOAD_SIZE")
+
+	http.HandleFunc(utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdate(postgreSQLHandler, jobStore, maxUploadSize))
 	http.HandleFunc("/job-status", HandleJobStatus(jobStore))
 
-	host := utils.ReadEnvOrFail("HTTP_SERVER_HOST")
-	port := utils.ReadEnvOrFail("HTTP_SERVER_PORT")
-	certPath := utils.ReadEnvOrFail("TLS_CERT_PATH")
-	keyPath := utils.ReadEnvOrFail("TLS_KEY_PATH")
+	host := utils.GetEnvOrPanic("HTTP_SERVER_HOST")
+	port := utils.GetEnvOrPanic("HTTP_SERVER_PORT")
+	certPath := utils.GetEnvOrPanic("TLS_CERT_PATH")
+	keyPath := utils.GetEnvOrPanic("TLS_KEY_PATH")
 
 	log.Printf("Starting server on %s:%s", host, port)
 
