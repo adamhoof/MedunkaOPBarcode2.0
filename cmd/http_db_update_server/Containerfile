@@ -1,24 +1,33 @@
-FROM --platform=${BUILDPLATFORM} golang:1.23 as builder
+ARG GO_VERSION=1.25.6
+ARG ALPINE_VERSION=3.23
 
-LABEL maintainer="Adam Hofman <adam.hofman1@gmail.com>"
+FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+RUN apk add --no-cache git
 
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY ./cmd/http-db-update-server ./cmd/http-db-update-server
-COPY ./internal ./internal
+COPY . .
 
+ARG TARGETOS
 ARG TARGETARCH
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH:-amd64} go build -a -installsuffix cgo -o main ./cmd/http-db-update-server/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -ldflags="-w -s" -o main ./cmd/http_db_update_server/main.go
 
-FROM --platform=${BUILDPLATFORM} alpine:3.20
+FROM alpine:${ALPINE_VERSION}
 
-WORKDIR /root/
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /home/appuser
 
 COPY --from=builder /app/main .
+
+USER appuser
 
 CMD ["./main"]
