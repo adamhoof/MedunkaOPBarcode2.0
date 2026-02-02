@@ -10,3 +10,4 @@ CMakeListsPrivate.txt
 cmake-build-*/
 credentials.h
 certs
+.env

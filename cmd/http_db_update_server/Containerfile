@@ -1,7 +1,11 @@
-ARG GO_VERSION=1.25.6
-ARG ALPINE_VERSION=3.23
+ARG GO_IMAGE
+ARG ALPINE_IMAGE
 
-FROM --platform=${BUILDPLATFORM} golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
+FROM ${GO_IMAGE} AS builder
+
+ARG GO_IMAGE
+ARG ALPINE_IMAGE
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -12,13 +16,12 @@ RUN go mod download
 
 COPY . .
 
-ARG TARGETOS
-ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
+    go build -ldflags="-w -s" -o main ./cmd/http_db_update_server
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-w -s" -o main ./cmd/http_db_update_server/main.go
+FROM ${ALPINE_IMAGE}
 
-FROM alpine:${ALPINE_VERSION}
+ARG ALPINE_IMAGE
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

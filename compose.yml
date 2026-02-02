@@ -1,7 +1,7 @@
 services:
   postgres_db:
     container_name: postgres_db
-    image: docker.io/library/postgres:18.1-trixie
+    image: "${POSTGRES_IMAGE}"
     restart: unless-stopped
     secrets:
       - server_key
@@ -27,7 +27,7 @@ services:
 
   mosquitto_broker:
     container_name: mosquitto_broker
-    image: docker.io/eclipse-mosquitto:2.1.0-alpine
+    image: "${MOSQUITTO_IMAGE}"
     restart: unless-stopped
     secrets:
       - server_key
@@ -50,8 +50,9 @@ services:
       context: .
       dockerfile: ./cmd/http_db_update_server/Containerfile
       args:
-        - GO_VERSION=1.25.6
-        - ALPINE_VERSION=3.23
+        - GO_IMAGE=${GO_IMAGE}
+        - ALPINE_IMAGE=${ALPINE_IMAGE}
+        - TARGETARCH=${TARGETARCH}
     restart: unless-stopped
     depends_on:
       - postgres_db
@@ -76,8 +77,9 @@ services:
       context: .
       dockerfile: ./cmd/mqtt_product_api/Containerfile
       args:
-        - GO_VERSION=1.25.6
-        - ALPINE_VERSION=3.23
+        - GO_IMAGE=${GO_IMAGE}
+        - ALPINE_IMAGE=${ALPINE_IMAGE}
+        - TARGETARCH=${TARGETARCH}
     restart: unless-stopped
     depends_on:
       - postgres_db
