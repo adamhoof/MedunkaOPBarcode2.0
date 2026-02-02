@@ -11,8 +11,8 @@ func New(filename string) (CatalogParser, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 
 	switch ext {
-	case ".mmdb", ".mdb":
-		return NewMMDB()
+	case ".csv":
+		return NewCSV()
 	default:
 		return nil, fmt.Errorf("no parser found for extension: %s", ext)
 	}
