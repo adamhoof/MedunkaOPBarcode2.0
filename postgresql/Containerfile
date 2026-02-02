@@ -1,0 +1,10 @@
+ARG POSTGRES_IMAGE
+FROM ${POSTGRES_IMAGE}
+
+USER root
+
+RUN usermod -u 1000 postgres && groupmod -g 1000 postgres
+
+RUN chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
+
+USER postgres

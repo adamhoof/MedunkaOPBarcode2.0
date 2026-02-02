@@ -1,0 +1,12 @@
+ARG MOSQUITTO_IMAGE
+FROM ${MOSQUITTO_IMAGE}
+
+USER root
+
+RUN apk add --no-cache shadow && \
+    usermod -u 1000 mosquitto && \
+    groupmod -g 1000 mosquitto
+
+RUN chown -R mosquitto:mosquitto /mosquitto
+
+USER mosquitto

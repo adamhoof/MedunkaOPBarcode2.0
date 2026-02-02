@@ -1,18 +1,38 @@
 services:
   postgres_db:
     container_name: postgres_db
-    image: "${POSTGRES_IMAGE}"
+    build:
+      context: .
+      dockerfile: ./postgresql/Containerfile
+      args:
+        - POSTGRES_IMAGE=${POSTGRES_IMAGE}
     restart: unless-stopped
     secrets:
-      - server_key
-      - db_user
-      - db_password
+      - source: server_key
+        target: server_key
+        uid: "0"
+        gid: "1000"
+        mode: 440
+      - source: db_user
+        target: db_user
+        uid: "0"
+        gid: "1000"
+        mode: 440
+      - source: db_password
+        target: db_password
+        uid: "0"
+        gid: "1000"
+        mode: 440
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/db_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=${POSTGRES_DB:-products_db}
     env_file:
       - .env
     ports:
       - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - shared_data:/tmp
       - ./certs/server.crt:/certs/server.crt:ro
       - ./certs/ca.crt:/certs/ca.crt:ro
@@ -27,17 +47,29 @@ services:
 
   mosquitto_broker:
     container_name: mosquitto_broker
-    image: "${MOSQUITTO_IMAGE}"
+    build:
+      context: .
+      dockerfile: ./mosquitto/Containerfile
+      args:
+        - MOSQUITTO_IMAGE=${MOSQUITTO_IMAGE}
     restart: unless-stopped
     secrets:
-      - server_key
-      - mqtt_passwd_db
+      - source: server_key
+        target: server_key
+        uid: "0"
+        gid: "1000"
+        mode: 440
+      - source: mqtt_passwd_db
+        target: mqtt_passwd_db
+        uid: "1000"
+        gid: "1000"
+        mode: 440
     env_file:
       - .env
     ports:
       - "${MQTT_PORT}:${MQTT_PORT}"
     volumes:
-      - ./mosquitto-config:/mosquitto/config
+      - ./mosquitto:/mosquitto/config
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
       - ./certs/server.crt:/mosquitto/certs/server.crt:ro
