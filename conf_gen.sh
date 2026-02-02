@@ -21,7 +21,7 @@ SERVER_IP="$1"
 ORG_NAME="MOB2"
 ORG_NAME_LOWER=$(echo "$ORG_NAME" | tr '[:upper:]' '[:lower:]')
 
-MOSQUITTO_CONF_DIR="mosquitto_config"
+MOSQUITTO_CONF_DIR="mosquitto"
 CERTS_DIR="certs"
 
 mkdir -p $CERTS_DIR
@@ -89,7 +89,9 @@ echo -n "$MQTT_USER_VAL" | podman secret create "$SECRET_MQTT_USER" -
 echo -n "$MQTT_PASS_VAL" | podman secret create "$SECRET_MQTT_PASS" -
 
 echo "gen mosquitto password hash..."
-podman run --rm -it docker.io/eclipse-mosquitto:2.1.0-alpine mosquitto_passwd -c -b /tmp/passwd "$MQTT_USER_VAL" "$MQTT_PASS_VAL" > "$MOSQUITTO_PASS_FILE"
+podman run --rm docker.io/eclipse-mosquitto:2.1.0-alpine \
+  sh -c "mosquitto_passwd -c -b /tmp/passwd '$MQTT_USER_VAL' '$MQTT_PASS_VAL' > /dev/null 2>&1 && cat /tmp/passwd" > "$MOSQUITTO_PASS_FILE"
+
 podman secret create "$SECRET_MQTT_DB" "$MOSQUITTO_PASS_FILE"
 
 echo "gen mosquitto.conf..."
