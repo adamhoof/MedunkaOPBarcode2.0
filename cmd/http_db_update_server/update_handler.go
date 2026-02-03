@@ -76,11 +76,11 @@ func HandleDatabaseUpdate(db database.Handler, jobStore *sync.Map, maxUploadSize
 func processImportJob(db database.Handler, p parser.CatalogParser, filePath string, jobID string, jobStore *sync.Map) {
 	defer os.Remove(filePath)
 
-	jobStore.Store(jobID, JobStatus{State: "processing", Message: "Importing data..."})
+	jobStore.Store(jobID, JobStatus{State: "processing", Message: "importing data"})
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		jobStore.Store(jobID, JobStatus{State: "failed", Message: "Failed to open file"})
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: "failed to open file"})
 		return
 	}
 	defer file.Close()
@@ -92,14 +92,14 @@ func processImportJob(db database.Handler, p parser.CatalogParser, filePath stri
 
 	err = db.ImportCatalog(ctx, stream)
 	if err != nil {
-		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("Database error: %v", err)})
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("database error: %v", err)})
 		return
 	}
 
 	if parseErr := <-parseErrors; parseErr != nil {
-		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("Parsing error: %v", parseErr)})
+		jobStore.Store(jobID, JobStatus{State: "failed", Message: fmt.Sprintf("parsing error: %v", parseErr)})
 		return
 	}
 
-	jobStore.Store(jobID, JobStatus{State: "completed", Message: "Import finished successfully"})
+	jobStore.Store(jobID, JobStatus{State: "completed", Message: "import finished successfully"})
 }

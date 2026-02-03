@@ -17,6 +17,7 @@ type cliConfig struct {
 	HttpHost            string
 	HttpPort            string
 	HttpUpdateEndpoint  string
+	HttpStatusEndpoint  string
 	TlsCaPath           string
 }
 
@@ -29,6 +30,7 @@ func loadCliConfig() cliConfig {
 		HttpHost:            utils.GetEnvOrPanic("HTTP_SERVER_HOST"),
 		HttpPort:            utils.GetEnvOrPanic("HTTP_SERVER_PORT"),
 		HttpUpdateEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
+		HttpStatusEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"),
 		TlsCaPath:           utils.GetEnvOrPanic("TLS_CA_PATH"),
 	}
 }
@@ -65,7 +67,7 @@ func main() {
 		{"e", "exit"},
 	}
 
-	if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint); err != nil {
+	if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint, cfg.HttpStatusEndpoint); err != nil {
 		log.Printf("Startup update failed: %v\n", err)
 	}
 
@@ -82,7 +84,7 @@ func main() {
 		case "ls":
 			printAllCommands(availableCommands)
 		case "dbu":
-			if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint); err != nil {
+			if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint, cfg.HttpStatusEndpoint); err != nil {
 				log.Printf("Update failed: %v\n", err)
 			}
 		case "sfwe":

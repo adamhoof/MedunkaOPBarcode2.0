@@ -26,7 +26,7 @@ func main() {
 	maxUploadSize := utils.GetEnvAsInt64("HTTP_MAX_UPLOAD_SIZE")
 
 	http.HandleFunc(utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"), HandleDatabaseUpdate(postgreSQLHandler, jobStore, maxUploadSize))
-	http.HandleFunc("/job-status", HandleJobStatus(jobStore))
+	http.HandleFunc(utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"), HandleJobStatus(jobStore))
 
 	host := utils.GetEnvOrPanic("HTTP_SERVER_HOST")
 	port := utils.GetEnvOrPanic("HTTP_SERVER_PORT")
