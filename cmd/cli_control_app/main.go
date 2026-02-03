@@ -69,8 +69,6 @@ func main() {
 		log.Printf("Startup update failed: %v\n", err)
 	}
 
-	printAllCommands(availableCommands)
-
 	for {
 		fmt.Print("HekrMejMej > ")
 		var input string

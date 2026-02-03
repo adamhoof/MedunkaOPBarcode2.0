@@ -68,7 +68,7 @@ func sendFileToServer(client *http.Client, host, port, endpoint, fileLocation st
 		return err
 	}
 
-	url := fmt.Sprintf("http://%s:%s%s", host, port, endpoint)
+	url := fmt.Sprintf("https://%s:%s%s", host, port, endpoint)
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return err

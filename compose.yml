@@ -94,8 +94,8 @@ services:
       - "${HTTP_SERVER_PORT}:${HTTP_SERVER_PORT}"
     volumes:
       - shared_data:/tmp
-      - ./certs/server.crt:/app/certs/server.crt:ro
-      - ./certs/ca.crt:/app/certs/ca.crt:ro
+      - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
+      - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
     networks:
       - MOB_network
 
@@ -122,8 +122,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./certs/server.crt:/app/certs/server.crt:ro
-      - ./certs/ca.crt:/app/certs/ca.crt:ro
+      - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
+      - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
     networks:
       - MOB_network
 
@@ -144,7 +144,7 @@ services:
       - mqtt_password
       - server_key
     volumes:
-      - ./certs:/app/certs:ro
+      - ./certs:${WORKDIR}/certs:ro
       - ${HOST_MDB_DIR}:${CONTAINER_MDB_DIR}:ro
     env_file:
       - .env
