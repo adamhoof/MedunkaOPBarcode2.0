@@ -9,17 +9,14 @@ services:
     restart: unless-stopped
     secrets:
       - source: server_key
-        target: server_key
         uid: "0"
         gid: "1000"
         mode: 440
       - source: db_user
-        target: db_user
         uid: "0"
         gid: "1000"
         mode: 440
       - source: db_password
-        target: db_password
         uid: "0"
         gid: "1000"
         mode: 440
@@ -55,12 +52,10 @@ services:
     restart: unless-stopped
     secrets:
       - source: server_key
-        target: server_key
         uid: "0"
         gid: "1000"
         mode: 440
       - source: mqtt_passwd_db
-        target: mqtt_passwd_db
         uid: "1000"
         gid: "1000"
         mode: 440
@@ -85,6 +80,7 @@ services:
         - GO_IMAGE=${GO_IMAGE}
         - ALPINE_IMAGE=${ALPINE_IMAGE}
         - TARGETARCH=${TARGETARCH}
+        - WORKDIR=${WORKDIR}
     restart: unless-stopped
     depends_on:
       - postgres_db
@@ -112,6 +108,7 @@ services:
         - GO_IMAGE=${GO_IMAGE}
         - ALPINE_IMAGE=${ALPINE_IMAGE}
         - TARGETARCH=${TARGETARCH}
+        - WORKDIR=${WORKDIR}
     restart: unless-stopped
     depends_on:
       - postgres_db
@@ -129,6 +126,33 @@ services:
       - ./certs/ca.crt:/app/certs/ca.crt:ro
     networks:
       - MOB_network
+
+  cli_control_app:
+    container_name: cli_control_app
+    build:
+      context: .
+      dockerfile: cmd/cli_control_app/Containerfile
+      args:
+        - GO_IMAGE=${GO_IMAGE}
+        - ALPINE_IMAGE=${ALPINE_IMAGE}
+        - TARGETARCH=${TARGETARCH}
+        - WORKDIR=${WORKDIR}
+    stdin_open: true
+    tty: true
+    secrets:
+      - mqtt_user
+      - mqtt_password
+      - server_key
+    volumes:
+      - ./certs:/app/certs:ro
+      - ${HOST_MDB_DIR}:${CONTAINER_MDB_DIR}:ro
+    env_file:
+      - .env
+    environment:
+      - MQTT_HOST=${MQTT_HOST_IP}
+      - HTTP_SERVER_HOST=${MQTT_HOST_IP}
+      - MQTT_CLIENT_ID=${MQTT_CLIAPP_CLIENT_ID}
+      - MDB_FILEPATH=${CONTAINER_MDB_DIR}/${MDB_FILENAME}
 
 secrets:
   server_key:
