@@ -4,8 +4,34 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/adamhoof/MedunkaOPBarcode2.0/cmd/cli_control_app/commands"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
 )
+
+type cliConfig struct {
+	BaseTopic           string
+	LightControlTopic   string
+	FirmwareUpdateTopic string
+	StatusTopic         string
+	MdbPath             string
+	HttpHost            string
+	HttpPort            string
+	HttpUpdateEndpoint  string
+	TlsCaPath           string
+}
+
+func loadCliConfig() cliConfig {
+	return cliConfig{
+		BaseTopic:           utils.GetEnvOrPanic("MQTT_BASE_TOPIC"),
+		FirmwareUpdateTopic: utils.GetEnvOrPanic("MQTT_FIRMWARE_UPDATE_TOPIC"),
+		StatusTopic:         utils.GetEnvOrPanic("MQTT_STATUS_TOPIC"),
+		MdbPath:             utils.GetEnvOrPanic("MDB_FILEPATH"),
+		HttpHost:            utils.GetEnvOrPanic("HTTP_SERVER_HOST"),
+		HttpPort:            utils.GetEnvOrPanic("HTTP_SERVER_PORT"),
+		HttpUpdateEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
+		TlsCaPath:           utils.GetEnvOrPanic("TLS_CA_PATH"),
+	}
+}
 
 type Command struct {
 	name        string
@@ -19,25 +45,35 @@ func printAllCommands(availableCommands []Command) {
 }
 
 func main() {
-	var input string
+	cfg := loadCliConfig()
+
+	mqttClient := utils.CreateSecureMQTTClient()
+	utils.ConnectOrFail(mqttClient)
+	defer mqttClient.Disconnect(250)
+
+	log.Println("CLI App Ready. Connected to MQTT.")
+
+	httpClient := utils.CreateSecureHTTPClient(cfg.TlsCaPath)
 
 	availableCommands := []Command{
-		{"ls", "list all available commands with their description"},
-		{"upd", "update database table containing product info"},
-		{"tmqtt", "test out mqtt connection by sending sample product data request"},
-		{"cdev", "control specific device (command prompts for name of device later)"},
+		{"ls", "list all available commands"},
+		{"dbu", "convert local MDB to CSV and upload to server"},
+		{"sfwe", "send firmware enable command to all stations"},
+		{"sfwd", "send firmware disable command to all stations"},
+		{"sw", "send wake command to all stations"},
+		{"ss", "send sleep command to all stations"},
+		{"e", "exit"},
 	}
 
-	mqttRequestTopic := utils.GetEnvOrPanic("MQTT_TOPIC_REQUEST")
-	lightControlTopic := utils.GetEnvOrPanic("LIGHT_CONTROL_TOPIC")
-	firmwareUpdateTopic := utils.GetEnvOrPanic("FIRMWARE_UPDATE_TOPIC")
-	mdbPath := utils.GetEnvOrPanic("MDB_PATH")
-	httpHost := utils.GetEnvOrPanic("HTTP_SERVER_HOST")
-	httpPort := utils.GetEnvOrPanic("HTTP_SERVER_PORT")
-	httpUpdateEndpoint := utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT")
+	if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint); err != nil {
+		log.Printf("Startup update failed: %v\n", err)
+	}
+
+	printAllCommands(availableCommands)
 
 	for {
 		fmt.Print("HekrMejMej > ")
+		var input string
 		if _, err := fmt.Scanln(&input); err != nil {
 			log.Printf("failed to scan line: %s\n", err)
 			continue
@@ -45,24 +81,25 @@ func main() {
 
 		fmt.Println()
 		switch input {
-		case "upd":
-			if err := DatabaseUpdate(mdbPath, httpHost, httpPort, httpUpdateEndpoint); err != nil {
-				log.Println(err)
-			}
-		case "tmqtt":
-			MQTTProductDataRequestTest("mqtt_test", mqttRequestTopic, "8595020340103", true)
-		case "cdev":
-			fmt.Print("Which device do you want to control?: ")
-			if _, err := fmt.Scanln(&input); err != nil {
-				log.Printf("failed to scan line: %s\n", err)
-				continue
-			}
-			// TODO search for device, if it does exist, enter function
-			EnterDeviceControlMode(input, lightControlTopic, firmwareUpdateTopic)
 		case "ls":
 			printAllCommands(availableCommands)
+		case "dbu":
+			if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint); err != nil {
+				log.Printf("Update failed: %v\n", err)
+			}
+		case "sfwe":
+			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.FirmwareUpdateTopic, "enable", false)
+		case "sfwd":
+			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.FirmwareUpdateTopic, "disable", false)
+		case "sw":
+			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.StatusTopic, "wake", true)
+		case "ss":
+			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.StatusTopic, "sleep", true)
+		case "e":
+			return
 		default:
-			log.Printf("invalid command, try again...\n")
+			log.Printf("invalid command\n")
+			printAllCommands(availableCommands)
 		}
 	}
 }
