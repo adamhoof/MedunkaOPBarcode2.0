@@ -12,13 +12,13 @@ import (
 
 // CreateSecureMQTTClient returns a fully configured client or panics.
 // It does NOT connect (Connect is a separate step), but it prepares the configuration.
-func CreateSecureMQTTClient() mqtt.Client {
+func CreateSecureMQTTClient(clientID string) mqtt.Client {
 	opts := mqtt.NewClientOptions()
 	protocol := GetEnvOrPanic("MQTT_PROTOCOL")
 	host := GetEnvOrPanic("MQTT_HOST")
 	port := GetEnvOrPanic("MQTT_PORT")
 	opts.AddBroker(fmt.Sprintf("%s://%s:%s", protocol, host, port))
-	opts.SetClientID(GetEnvOrPanic("MQTT_CLIENT_ID"))
+	opts.SetClientID(clientID)
 	opts.SetUsername(ReadSecretOrFail("MQTT_USER_FILE"))
 	opts.SetPassword(ReadSecretOrFail("MQTT_PASSWORD_FILE"))
 

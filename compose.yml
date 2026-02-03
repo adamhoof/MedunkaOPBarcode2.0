@@ -150,8 +150,7 @@ services:
       - .env
     environment:
       - MQTT_HOST=${MQTT_HOST_IP}
-      - HTTP_SERVER_HOST=${MQTT_HOST_IP}
-      - MQTT_CLIENT_ID=${MQTT_CLIAPP_CLIENT_ID}
+      - HTTP_SERVER_HOST=${HTTP_SERVER_IP}
       - MDB_FILEPATH=${CONTAINER_MDB_DIR}/${MDB_FILENAME}
 
 secrets:

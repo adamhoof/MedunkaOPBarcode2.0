@@ -49,7 +49,7 @@ func printAllCommands(availableCommands []Command) {
 func main() {
 	cfg := loadCliConfig()
 
-	mqttClient := utils.CreateSecureMQTTClient()
+	mqttClient := utils.CreateSecureMQTTClient(utils.GetEnvOrPanic("MQTT_CLIAPP_CLIENT_ID"))
 	utils.ConnectOrFail(mqttClient)
 	defer mqttClient.Disconnect(250)
 

@@ -22,7 +22,7 @@ func main() {
 		}
 	}()
 
-	mqttClient := utils.CreateSecureMQTTClient()
+	mqttClient := utils.CreateSecureMQTTClient(utils.GetEnvOrPanic("MQTT_API_CLIENT_ID"))
 	utils.ConnectOrFail(mqttClient)
 
 	jobQueue := make(chan mqtt.Message, utils.GetEnvAsInt("APP_JOB_QUEUE_SIZE"))
