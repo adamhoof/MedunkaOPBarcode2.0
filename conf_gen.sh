@@ -43,16 +43,16 @@ SECRET_MQTT_USER="mqtt_user"
 SECRET_MQTT_PASS="mqtt_password"
 SECRET_MQTT_DB="mqtt_passwd_db"
 
-echo "gen ed25519 certificates..."
+echo "gen prime256v1 certificates..."
 
 # CA
-openssl req -x509 -new -newkey ed25519 -nodes \
+openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
   -days 3650 -sha256 \
   -keyout "$CA_KEY" -out "$CA_CRT" \
   -subj "/O=$ORG_NAME/CN=$ORG_NAME-Root-CA"
 
 # server key and CSR
-openssl req -new -newkey ed25519 -nodes \
+openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
   -keyout "$SERVER_KEY" -out "$SERVER_CSR" \
   -subj "/O=$ORG_NAME/CN=$ORG_NAME_LOWER-server"
 
