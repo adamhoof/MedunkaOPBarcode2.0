@@ -9,8 +9,6 @@ import (
 )
 
 type cliConfig struct {
-	BaseTopic           string
-	LightControlTopic   string
 	FirmwareUpdateTopic string
 	StatusTopic         string
 	MdbPath             string
@@ -23,7 +21,6 @@ type cliConfig struct {
 
 func loadCliConfig() cliConfig {
 	return cliConfig{
-		BaseTopic:           utils.GetEnvOrPanic("MQTT_BASE_TOPIC"),
 		FirmwareUpdateTopic: utils.GetEnvOrPanic("MQTT_FIRMWARE_UPDATE_TOPIC"),
 		StatusTopic:         utils.GetEnvOrPanic("MQTT_STATUS_TOPIC"),
 		MdbPath:             utils.GetEnvOrPanic("MDB_FILEPATH"),
@@ -71,6 +68,8 @@ func main() {
 		log.Printf("Startup update failed: %v\n", err)
 	}
 
+	fmt.Printf("\ntype 'ls' to see available commands\n\n")
+
 	for {
 		fmt.Print("HekrMejMej > ")
 		var input string
@@ -88,13 +87,13 @@ func main() {
 				log.Printf("Update failed: %v\n", err)
 			}
 		case "sfwe":
-			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.FirmwareUpdateTopic, "enable", false)
+			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, "start", false)
 		case "sfwd":
-			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.FirmwareUpdateTopic, "disable", false)
+			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, "stop", false)
 		case "sw":
-			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.StatusTopic, "wake", true)
+			commands.SendCommand(mqttClient, cfg.StatusTopic, "wake", true)
 		case "ss":
-			commands.SendGlobalCommand(mqttClient, cfg.BaseTopic, cfg.StatusTopic, "sleep", true)
+			commands.SendCommand(mqttClient, cfg.StatusTopic, "sleep", true)
 		case "e":
 			return
 		default:

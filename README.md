@@ -32,17 +32,13 @@ CLI -> HTTPS (TLS) -> http_db_update_server -> PostgreSQL
 ## Data Flows
 
 ### Product lookup (station -> MQTT -> database)
-1. Station publishes a `ProductDataRequest` JSON to `MQTT_TOPIC_REQUEST`.
-2. `mqtt_product_api` consumes the request, queries PostgreSQL by `barcode`, and publishes a `Product` response to `clientTopic` from the request.
+1. Station publishes an empty payload to a topic shaped as `product/<station_mac>/<barcode>`.
+2. `mqtt_product_api` consumes the request, queries PostgreSQL by `barcode`, and publishes a `Product` response to `product/<station_mac>`.
 3. Stations display product data locally.
 
-Request payload (from stations):
-```json
-{
-  "clientTopic": "stations/response/<station_id>",
-  "barcode": "8595020340103",
-  "includeDiacritics": true
-}
+Request topic example:
+```
+product/246f2880a1b2/8595020340103
 ```
 
 Response payload (from server):
@@ -68,8 +64,8 @@ Response payload (from server):
 ## MQTT Topics and Global Commands
 
 **Lookup topic**
-- `MQTT_TOPIC_REQUEST` (example: `product/request`)
-- Stations publish lookup requests here.
+- `MQTT_TOPIC_REQUEST` (example: `product/+/+`)
+- Stations publish lookup requests as `product/<station_mac>/<barcode>`.
 
 **Global commands (CLI)**
 The CLI publishes to:
@@ -197,8 +193,7 @@ Below is a practical guide to each field. Values shown are examples.
 - `MQTT_HOST`: `mosquitto_broker` (internal container DNS)
 - `MQTT_PORT`: `8883`
 - `MQTT_API_CLIENT_ID`: `mqttDatabaseAPI` (used by `mqtt_product_api`)
-- `MQTT_TOPIC_REQUEST`: `product/request`
-- `MQTT_BASE_TOPIC`: `stations`
+- `MQTT_TOPIC_REQUEST`: `product/+/+`
 - `MQTT_FIRMWARE_UPDATE_TOPIC`: `firmware_update`
 - `MQTT_STATUS_TOPIC`: `status`
 - `MQTT_USER_FILE`: `/run/secrets/mqtt_user`
