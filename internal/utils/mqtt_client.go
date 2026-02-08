@@ -19,8 +19,6 @@ func CreateSecureMQTTClient(clientID string) mqtt.Client {
 	port := GetEnvOrPanic("MQTT_PORT")
 	opts.AddBroker(fmt.Sprintf("%s://%s:%s", protocol, host, port))
 	opts.SetClientID(clientID)
-	opts.SetUsername(ReadSecretOrFail("MQTT_USER_FILE"))
-	opts.SetPassword(ReadSecretOrFail("MQTT_PASSWORD_FILE"))
 
 	tlsConfig, err := generateTLSConfig()
 	if err != nil {
@@ -37,7 +35,7 @@ func CreateSecureMQTTClient(clientID string) mqtt.Client {
 }
 
 func generateTLSConfig() (*tls.Config, error) {
-	clientCert, err := tls.LoadX509KeyPair(GetEnvOrPanic("TLS_CERT_PATH"), GetEnvOrPanic("TLS_KEY_PATH"))
+	clientCert, err := tls.LoadX509KeyPair(GetEnvOrPanic("TLS_CLIENT_CERT_PATH"), GetEnvOrPanic("TLS_CLIENT_KEY_PATH"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load client keypair: %w", err)
 	}
@@ -53,9 +51,10 @@ func generateTLSConfig() (*tls.Config, error) {
 	}
 
 	return &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		Certificates: []tls.Certificate{clientCert},
-		RootCAs:      rootCAs,
+		MinVersion:         tls.VersionTLS12,
+		Certificates:       []tls.Certificate{clientCert},
+		RootCAs:            rootCAs,
+		InsecureSkipVerify: false,
 	}, nil
 }
 

@@ -17,6 +17,8 @@ type cliConfig struct {
 	HttpUpdateEndpoint  string
 	HttpStatusEndpoint  string
 	TlsCaPath           string
+	TlsCertPath         string
+	TlsKeyPath          string
 }
 
 func loadCliConfig() cliConfig {
@@ -29,6 +31,8 @@ func loadCliConfig() cliConfig {
 		HttpUpdateEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
 		HttpStatusEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"),
 		TlsCaPath:           utils.GetEnvOrPanic("TLS_CA_PATH"),
+		TlsCertPath:         utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
+		TlsKeyPath:          utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
 	}
 }
 
@@ -52,11 +56,11 @@ func main() {
 
 	log.Println("CLI App Ready. Connected to MQTT.")
 
-	httpClient := utils.CreateSecureHTTPClient(cfg.TlsCaPath)
+	httpClient := utils.CreateSecureHTTPClient(cfg.TlsCaPath, cfg.TlsCertPath, cfg.TlsKeyPath)
 
 	availableCommands := []Command{
 		{"ls", "list all available commands"},
-		{"dbu", "convert local MDB to CSV and upload to server"},
+		{"upd", "convert local MDB to CSV and upload to server"},
 		{"sfwe", "send firmware enable command to all stations"},
 		{"sfwd", "send firmware disable command to all stations"},
 		{"sw", "send wake command to all stations"},
@@ -82,7 +86,7 @@ func main() {
 		switch input {
 		case "ls":
 			printAllCommands(availableCommands)
-		case "dbu":
+		case "upd":
 			if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint, cfg.HttpStatusEndpoint); err != nil {
 				log.Printf("Update failed: %v\n", err)
 			}

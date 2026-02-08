@@ -22,7 +22,7 @@ CLI -> HTTPS (TLS) -> http_db_update_server -> PostgreSQL
 
 **Core services (compose)**
 - `postgres_db`: PostgreSQL with TLS enabled; stores product catalog.
-- `mosquitto_broker`: MQTT broker (TLS + username/password auth).
+- `mosquitto_broker`: MQTT broker (mTLS client cert auth).
 - `mqtt_product_api`: subscribes to product requests and publishes replies.
 - `http_db_update_server`: accepts catalog uploads and runs async import jobs.
 - `cli_control_app`: operator CLI to upload catalogs and send global station commands.
@@ -136,19 +136,15 @@ Payload is a simple string (`"1"`) with QoS 1 and optional retain flag.
 ## TLS, Secrets, and `conf_gen.sh`
 
 ### What `conf_gen.sh` does
-- Generates a CA and server TLS certificate.
+- Generates a CA, server certificate, and client certificate.
 - Creates Podman secrets for:
   - `server_key` (TLS private key)
-  - `db_user`, `db_password`
-  - `mqtt_user`, `mqtt_password`
-  - `mqtt_passwd_db` (mosquitto password file)
-- Generates `mosquitto/mosquitto.conf` with TLS + password auth.
+  - `client_key` (client TLS private key)
+- Generates `mosquitto/mosquitto.conf` with mTLS client cert auth.
 
 ### Where secrets are used
-- `server_key`: mounted into `postgres_db`, `mosquitto_broker`, and `http_db_update_server` as the TLS private key. `mqtt_product_api` and `cli_control_app` load `TLS_CERT_PATH` + `TLS_KEY_PATH` as the MQTT client certificate/key.
-- `db_user` / `db_password`: used by PostgreSQL and by Go services through `POSTGRES_USER_FILE` and `POSTGRES_PASSWORD_FILE`.
-- `mqtt_user` / `mqtt_password`: used by MQTT clients via `MQTT_USER_FILE` / `MQTT_PASSWORD_FILE`.
-- `mqtt_passwd_db`: mosquitto password file used by the broker.
+- `server_key`: mounted into `postgres_db`, `mosquitto_broker`, and `http_db_update_server` as the TLS private key.
+- `client_key`: mounted into `http_db_update_server`, `mqtt_product_api`, and `cli_control_app` for mTLS client auth.
 
 ### Critical caveat: IP address in certs
 `conf_gen.sh` requires a server IP argument:
@@ -175,18 +171,15 @@ Below is a practical guide to each field. Values shown are examples.
 - `POSTGRES_HOST`: `postgres_db` (internal container DNS)
 - `POSTGRES_PORT`: `5432`
 - `POSTGRES_DB`: `products_db`
-- `POSTGRES_SSLMODE`: `verify-full`
 - `DB_TABLE_NAME`: `products`
 - `DB_MAX_OPEN_CONNS`: `10`
 - `DB_MAX_IDLE_CONNS`: `10`
 - `DB_CONN_MAX_LIFETIME`: `10m`
-- `POSTGRES_USER_FILE`: `/run/secrets/db_user`
-- `POSTGRES_PASSWORD_FILE`: `/run/secrets/db_password`
 
 ### TLS
 - `TLS_CA_PATH`: `/app/certs/ca.crt`
-- `TLS_CERT_PATH`: `/app/certs/server.crt`
-- `TLS_KEY_PATH`: `/run/secrets/server_key`
+- `TLS_CLIENT_CERT_PATH`: `/app/certs/client.crt`
+- `TLS_CLIENT_KEY_PATH`: `/run/secrets/client_key`
 
 ### MQTT
 - `MQTT_PROTOCOL`: `tcps`
@@ -196,8 +189,6 @@ Below is a practical guide to each field. Values shown are examples.
 - `MQTT_TOPIC_REQUEST`: `product/+/+`
 - `MQTT_FIRMWARE_UPDATE_TOPIC`: `firmware_update`
 - `MQTT_STATUS_TOPIC`: `status`
-- `MQTT_USER_FILE`: `/run/secrets/mqtt_user`
-- `MQTT_PASSWORD_FILE`: `/run/secrets/mqtt_password`
 
 ### HTTP update server
 - `HTTP_SERVER_HOST`: `0.0.0.0` (server bind address inside container)
@@ -227,11 +218,7 @@ Below is a practical guide to each field. Values shown are examples.
 ## Build and Run (Podman)
 
 ### 1) Generate TLS + secrets
-Edit `conf_gen.sh` and set:
-- `DB_USER_VAL`, `DB_PASS_VAL`
-- `MQTT_USER_VAL`, `MQTT_PASS_VAL`
-
-Then run:
+Run:
 ```
 ./conf_gen.sh <server_ip>
 ```
