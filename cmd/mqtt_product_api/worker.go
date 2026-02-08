@@ -10,6 +10,7 @@ import (
 
 	godiacritics "github.com/Regis24GmbH/go-diacritics"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
+	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
@@ -17,14 +18,12 @@ const (
 	maxPublishRetries = 3
 )
 
-// processJobs pulls from the channel forever.
 func processJobs(db database.Handler, client mqtt.Client, jobs <-chan mqtt.Message, dbTimeout time.Duration) {
 	for msg := range jobs {
 		safeHandleRequest(db, client, msg, dbTimeout)
 	}
 }
 
-// safeHandleRequest prevents a single bad message from crashing the app
 func safeHandleRequest(db database.Handler, client mqtt.Client, msg mqtt.Message, dbTimeout time.Duration) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -35,7 +34,6 @@ func safeHandleRequest(db database.Handler, client mqtt.Client, msg mqtt.Message
 	handleRequest(db, client, msg, dbTimeout)
 }
 
-// handleRequest is the actual business logic
 func handleRequest(db database.Handler, client mqtt.Client, msg mqtt.Message, dbTimeout time.Duration) {
 	parts := strings.Split(msg.Topic(), "/")
 	if len(parts) < 3 || parts[0] != "product" {
@@ -49,16 +47,23 @@ func handleRequest(db database.Handler, client mqtt.Client, msg mqtt.Message, db
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
+	var responseProduct domain.Product
+
 	product, err := db.Fetch(ctx, barcode)
 	if err != nil {
 		log.Printf("failed to fetch product %s: %v", barcode, err)
-		return
+		responseProduct = domain.Product{
+			Barcode: barcode,
+			Valid:   false,
+		}
+	} else {
+		responseProduct = *product
+		responseProduct.Valid = true
+		responseProduct.Name = godiacritics.Normalize(responseProduct.Name)
+		responseProduct.Price = godiacritics.Normalize(responseProduct.Price)
 	}
 
-	product.Name = godiacritics.Normalize(product.Name)
-	product.Price = godiacritics.Normalize(product.Price)
-
-	respJSON, err := json.Marshal(product)
+	respJSON, err := json.Marshal(responseProduct)
 	if err != nil {
 		log.Printf("failed to serialize response: %v", err)
 		return

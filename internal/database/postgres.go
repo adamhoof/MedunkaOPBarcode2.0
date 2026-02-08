@@ -2,14 +2,18 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/domain"
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/utils"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -25,18 +29,46 @@ type Postgres struct {
 func NewPostgres() (Handler, error) {
 	config := loadPostgresConfig()
 
-	connectionString := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s sslrootcert=%s",
+	cert, err := tls.LoadX509KeyPair(config.ClientCertPath, config.ClientKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load client key pair: %w", err)
+	}
+
+	caCert, err := os.ReadFile(config.CAPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CA cert: %w", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("failed to append CA cert")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		ServerName:   config.Host,
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	connString := fmt.Sprintf(
+		"host=%s port=%s user=%s dbname=%s sslmode=require",
 		config.Host,
 		config.Port,
 		config.User,
-		config.Password,
 		config.Database,
-		config.SSLMode,
-		config.CAPath,
 	)
 
-	db, err := sql.Open("postgres", connectionString)
+	pgxConfig, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	pgxConfig.TLSConfig = tlsConfig
+
+	connStr := stdlib.RegisterConnConfig(pgxConfig)
+
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("could not open connection: %w", err)
 	}
@@ -56,11 +88,11 @@ func NewPostgres() (Handler, error) {
 type postgresConfig struct {
 	Host            string
 	Port            string
+	User            string
 	Database        string
 	TableName       string
-	User            string
-	Password        string
-	SSLMode         string
+	ClientCertPath  string
+	ClientKeyPath   string
 	CAPath          string
 	MaxOpenConns    int
 	MaxIdleConns    int
@@ -71,11 +103,11 @@ func loadPostgresConfig() postgresConfig {
 	return postgresConfig{
 		Host:            utils.GetEnvOrPanic("POSTGRES_HOST"),
 		Port:            utils.GetEnvOrPanic("POSTGRES_PORT"),
+		User:            utils.ReadSecretOrFail("POSTGRES_USER_FILE"),
 		Database:        utils.GetEnvOrPanic("POSTGRES_DB"),
 		TableName:       utils.GetEnvOrPanic("DB_TABLE_NAME"),
-		User:            utils.ReadSecretOrFail("POSTGRES_USER_FILE"),
-		Password:        utils.ReadSecretOrFail("POSTGRES_PASSWORD_FILE"),
-		SSLMode:         utils.GetEnvOrPanic("POSTGRES_SSLMODE"),
+		ClientCertPath:  utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
+		ClientKeyPath:   utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
 		CAPath:          utils.GetEnvOrPanic("TLS_CA_PATH"),
 		MaxOpenConns:    utils.GetEnvAsInt("DB_MAX_OPEN_CONNS"),
 		MaxIdleConns:    utils.GetEnvAsInt("DB_MAX_IDLE_CONNS"),
@@ -166,48 +198,58 @@ func (p *Postgres) createTable(ctx context.Context) error {
 }
 
 func (p *Postgres) copyStream(ctx context.Context, stream <-chan domain.Product) error {
-	txn, err := p.db.BeginTx(ctx, nil)
+	conn, err := p.db.Conn(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to start transaction: %w", err)
+		return fmt.Errorf("failed to acquire connection: %w", err)
 	}
+	defer conn.Close()
 
-	stmt, err := txn.PrepareContext(ctx, pq.CopyIn(
-		p.tableName,
-		"name",
-		"barcode",
-		"price",
-		"unit_of_measure",
-		"unit_of_measure_koef",
-		"stock",
-	))
-	if err != nil {
-		_ = txn.Rollback()
-		return fmt.Errorf("failed to prepare copy statement: %w", err)
-	}
-	defer stmt.Close()
-
-	for {
-		select {
-		case <-ctx.Done():
-			_ = txn.Rollback()
-			return ctx.Err()
-		case record, ok := <-stream:
-			if !ok {
-				if _, err := stmt.Exec(); err != nil {
-					_ = txn.Rollback()
-					return fmt.Errorf("failed to flush copy data: %w", err)
-				}
-
-				if err := txn.Commit(); err != nil {
-					return fmt.Errorf("failed to commit transaction: %w", err)
-				}
-				return nil
-			}
-
-			if _, err := stmt.Exec(record.Name, record.Barcode, record.Price, record.UnitOfMeasure, record.UnitOfMeasureCoef, record.Stock); err != nil {
-				_ = txn.Rollback()
-				return fmt.Errorf("failed to buffer copy data: %w", err)
-			}
+	return conn.Raw(func(driverConn any) error {
+		stdlibConn, ok := driverConn.(*stdlib.Conn)
+		if !ok {
+			return errors.New("driver connection is not a *stdlib.Conn")
 		}
-	}
+
+		pgxConn := stdlibConn.Conn()
+
+		source := &streamSource{stream: stream}
+		_, err := pgxConn.CopyFrom(
+			ctx,
+			pgx.Identifier{p.tableName},
+			[]string{"name", "barcode", "price", "unit_of_measure", "unit_of_measure_koef", "stock"},
+			source,
+		)
+		if err != nil {
+			return fmt.Errorf("copy failed: %w", err)
+		}
+
+		return nil
+	})
+}
+
+type streamSource struct {
+	stream  <-chan domain.Product
+	current domain.Product
+	err     error
+}
+
+func (s *streamSource) Next() bool {
+	var ok bool
+	s.current, ok = <-s.stream
+	return ok
+}
+
+func (s *streamSource) Values() ([]any, error) {
+	return []any{
+		s.current.Name,
+		s.current.Barcode,
+		s.current.Price,
+		s.current.UnitOfMeasure,
+		s.current.UnitOfMeasureCoef,
+		s.current.Stock,
+	}, nil
+}
+
+func (s *streamSource) Err() error {
+	return s.err
 }

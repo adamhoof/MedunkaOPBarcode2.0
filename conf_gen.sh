@@ -1,14 +1,12 @@
 #!/bin/bash
 set -e
 
-# credentials
-DB_USER_VAL="fill"
-DB_PASS_VAL="fill"
-MQTT_USER_VAL="fill"
-MQTT_PASS_VAL="fill"
 
-if [[ "$DB_USER_VAL" == "fill" || "$DB_PASS_VAL" == "fill" || "$MQTT_USER_VAL" == "fill" || "$MQTT_PASS_VAL" == "fill" ]]; then
-    echo "Error: One or more credentials are set to 'fill'. Please update the script variables."
+DB_USER_VAL="client"
+DB_PASS_VAL="securepass" # needed for init
+
+if [[ "$DB_USER_VAL" == "fill" || "$DB_PASS_VAL" == "fill" ]]; then
+    echo "Error: Please update the DB_USER_VAL and DB_PASS_VAL in the script."
     exit 1
 fi
 
@@ -32,16 +30,17 @@ CA_CRT="$CERTS_DIR/ca.crt"
 SERVER_KEY="$CERTS_DIR/server.key"
 SERVER_CSR="$CERTS_DIR/server.csr"
 SERVER_CRT="$CERTS_DIR/server.crt"
+CLIENT_KEY="$CERTS_DIR/client.key"
+CLIENT_CSR="$CERTS_DIR/client.csr"
+CLIENT_CRT="$CERTS_DIR/client.crt"
 EXT_FILE="$CERTS_DIR/v3.ext"
-MOSQUITTO_PASS_FILE="mosquitto.passwd"
 MOSQUITTO_CONF="$MOSQUITTO_CONF_DIR/mosquitto.conf"
 
+# secret names
 SECRET_SERVER_KEY="server_key"
+SECRET_CLIENT_KEY="client_key"
 SECRET_DB_USER="db_user"
 SECRET_DB_PASS="db_password"
-SECRET_MQTT_USER="mqtt_user"
-SECRET_MQTT_PASS="mqtt_password"
-SECRET_MQTT_DB="mqtt_passwd_db"
 
 echo "gen prime256v1 certificates..."
 
@@ -55,6 +54,11 @@ openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
 openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
   -keyout "$SERVER_KEY" -out "$SERVER_CSR" \
   -subj "/O=$ORG_NAME/CN=$ORG_NAME_LOWER-server"
+
+# client key and CSR
+openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+  -keyout "$CLIENT_KEY" -out "$CLIENT_CSR" \
+  -subj "/O=$ORG_NAME/CN=client"
 
 cat > "$EXT_FILE" << EOF
 authorityKeyIdentifier=keyid,issuer
@@ -71,28 +75,26 @@ IP.1 = 127.0.0.1
 IP.2 = $SERVER_IP
 EOF
 
-# sign cert
+# sign server cert
 openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
   -out "$SERVER_CRT" -days 365 -sha256 -extfile "$EXT_FILE"
 
+# sign client cert
+openssl x509 -req -in "$CLIENT_CSR" -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
+  -out "$CLIENT_CRT" -days 365 -sha256
+
 echo "re-creating podman secrets..."
 
-podman secret rm "$SECRET_SERVER_KEY" "$SECRET_DB_USER" "$SECRET_DB_PASS" \
-  "$SECRET_MQTT_USER" "$SECRET_MQTT_PASS" "$SECRET_MQTT_DB" 2>/dev/null || true
+# remove old secrets if they exist
+podman secret rm "$SECRET_SERVER_KEY" "$SECRET_CLIENT_KEY" "$SECRET_DB_USER" "$SECRET_DB_PASS" 2>/dev/null || true
 
+# create cert secrets
 podman secret create "$SECRET_SERVER_KEY" "$SERVER_KEY"
+podman secret create "$SECRET_CLIENT_KEY" "$CLIENT_KEY"
 
+# create db auth secrets
 echo -n "$DB_USER_VAL" | podman secret create "$SECRET_DB_USER" -
 echo -n "$DB_PASS_VAL" | podman secret create "$SECRET_DB_PASS" -
-
-echo -n "$MQTT_USER_VAL" | podman secret create "$SECRET_MQTT_USER" -
-echo -n "$MQTT_PASS_VAL" | podman secret create "$SECRET_MQTT_PASS" -
-
-echo "gen mosquitto password hash..."
-podman run --rm docker.io/eclipse-mosquitto:2.1.0-alpine \
-  sh -c "mosquitto_passwd -c -b /tmp/passwd '$MQTT_USER_VAL' '$MQTT_PASS_VAL' > /dev/null 2>&1 && cat /tmp/passwd" > "$MOSQUITTO_PASS_FILE"
-
-podman secret create "$SECRET_MQTT_DB" "$MOSQUITTO_PASS_FILE"
 
 echo "gen mosquitto.conf..."
 cat > "$MOSQUITTO_CONF" << EOF
@@ -101,13 +103,14 @@ listener 8883
 # TLS conf
 certfile /mosquitto/$CERTS_DIR/server.crt
 keyfile /run/secrets/$SECRET_SERVER_KEY
+cafile /mosquitto/$CERTS_DIR/ca.crt
 
 # Client auth
-allow_anonymous false
-password_file /run/secrets/$SECRET_MQTT_DB
+require_certificate true
+use_identity_as_username true
 EOF
 
 # cleanup
-rm "$MOSQUITTO_PASS_FILE" "$SERVER_CSR" "$EXT_FILE"
+rm "$SERVER_CSR" "$CLIENT_CSR" "$EXT_FILE"
 
 echo "done."

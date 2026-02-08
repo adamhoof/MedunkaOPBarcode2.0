@@ -20,19 +20,14 @@ services:
         uid: "0"
         gid: "1000"
         mode: 440
-    environment:
-      - POSTGRES_USER_FILE=/run/secrets/db_user
-      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
-      - POSTGRES_DB=${POSTGRES_DB:-products_db}
     env_file:
       - .env
-    ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql
       - shared_data:/tmp
       - ./certs/server.crt:/certs/server.crt:ro
       - ./certs/ca.crt:/certs/ca.crt:ro
+      - ./postgresql/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - MOB_network
     command: >
@@ -41,6 +36,7 @@ services:
       -c ssl_cert_file=/certs/server.crt 
       -c ssl_key_file=/run/secrets/server_key
       -c ssl_ca_file=/certs/ca.crt
+      -c hba_file=/etc/postgresql/pg_hba.conf
 
   mosquitto_broker:
     container_name: mosquitto_broker
@@ -55,10 +51,6 @@ services:
         uid: "0"
         gid: "1000"
         mode: 440
-      - source: mqtt_passwd_db
-        uid: "1000"
-        gid: "1000"
-        mode: 440
     env_file:
       - .env
     ports:
@@ -68,6 +60,7 @@ services:
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
       - ./certs/server.crt:/mosquitto/certs/server.crt:ro
+      - ./certs/ca.crt:/mosquitto/certs/ca.crt:ro
     networks:
       - MOB_network
 
@@ -86,8 +79,14 @@ services:
       - postgres_db
     secrets:
       - server_key
-      - db_user
-      - db_password
+      - source: client_key
+        uid: "1000"
+        gid: "1000"
+        mode: 400
+      - source: db_user
+        uid: "1000"
+        gid: "1000"
+        mode: 400
     env_file:
       - .env
     ports:
@@ -96,6 +95,7 @@ services:
       - shared_data:/tmp
       - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
       - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
+      - ./certs/client.crt:${WORKDIR}/certs/client.crt:ro
     networks:
       - MOB_network
 
@@ -115,15 +115,20 @@ services:
       - mosquitto_broker
     secrets:
       - server_key
-      - db_user
-      - db_password
-      - mqtt_user
-      - mqtt_password
+      - source: client_key
+        uid: "1000"
+        gid: "1000"
+        mode: 400
+      - source: db_user
+        uid: "1000"
+        gid: "1000"
+        mode: 400
     env_file:
       - .env
     volumes:
       - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
       - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
+      - ./certs/client.crt:${WORKDIR}/certs/client.crt:ro
     networks:
       - MOB_network
 
@@ -140,9 +145,11 @@ services:
     stdin_open: true
     tty: true
     secrets:
-      - mqtt_user
-      - mqtt_password
       - server_key
+      - source: client_key
+        uid: "1000"
+        gid: "1000"
+        mode: 400
     volumes:
       - ./certs:${WORKDIR}/certs:ro
       - ${HOST_MDB_DIR}:${CONTAINER_MDB_DIR}:ro
@@ -156,15 +163,11 @@ services:
 secrets:
   server_key:
     external: true
+  client_key:
+    external: true
   db_user:
     external: true
   db_password:
-    external: true
-  mqtt_user:
-    external: true
-  mqtt_password:
-    external: true
-  mqtt_passwd_db:
     external: true
 
 networks:

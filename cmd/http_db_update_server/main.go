@@ -1,9 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/adamhoof/MedunkaOPBarcode2.0/internal/database"
@@ -30,12 +33,34 @@ func main() {
 
 	host := utils.GetEnvOrPanic("HTTP_SERVER_HOST")
 	port := utils.GetEnvOrPanic("HTTP_SERVER_PORT")
-	certPath := utils.GetEnvOrPanic("TLS_CERT_PATH")
-	keyPath := utils.GetEnvOrPanic("TLS_KEY_PATH")
+	serverCertPath := utils.GetEnvOrPanic("TLS_SERVER_CERT_PATH")
+	serverKeyPath := utils.GetEnvOrPanic("TLS_SERVER_KEY_PATH")
+	caPath := utils.GetEnvOrPanic("TLS_CA_PATH")
+
+	caCert, err := os.ReadFile(caPath)
+	if err != nil {
+		log.Fatalf("failed to load CA cert: %v", err)
+	}
+
+	clientCAPool := x509.NewCertPool()
+	if ok := clientCAPool.AppendCertsFromPEM(caCert); !ok {
+		log.Fatal("failed to parse CA cert")
+	}
+
+	tlsConfig := &tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  clientCAPool,
+		MinVersion: tls.VersionTLS12,
+	}
 
 	log.Printf("Starting server on %s:%s", host, port)
 
-	err = http.ListenAndServeTLS(fmt.Sprintf("%s:%s", host, port), certPath, keyPath, nil)
+	server := &http.Server{
+		Addr:      fmt.Sprintf("%s:%s", host, port),
+		TLSConfig: tlsConfig,
+	}
+
+	err = server.ListenAndServeTLS(serverCertPath, serverKeyPath)
 	if err != nil {
 		log.Fatal("unable to start")
 	}
