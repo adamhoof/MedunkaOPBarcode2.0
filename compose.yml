@@ -144,6 +144,7 @@ services:
         - WORKDIR=${WORKDIR}
     stdin_open: true
     tty: true
+    network_mode: host
     secrets:
       - server_key
       - source: client_key
@@ -153,13 +154,14 @@ services:
     volumes:
       - ./certs:${WORKDIR}/certs:ro
       - ${HOST_MDB_DIR}:${CONTAINER_MDB_DIR}:ro
+      - ${HOST_FIRMWARE_DIR}:${CONTAINER_FIRMWARE_DIR}:ro
     env_file:
       - .env
     environment:
       - MQTT_HOST=${MQTT_HOST_IP}
       - HTTP_SERVER_HOST=${HTTP_SERVER_IP}
       - MDB_FILEPATH=${CONTAINER_MDB_DIR}/${MDB_FILENAME}
-
+      - FIRMWARE_FILEPATH=${CONTAINER_FIRMWARE_DIR}/${FIRMWARE_FILENAME}
 secrets:
   server_key:
     external: true

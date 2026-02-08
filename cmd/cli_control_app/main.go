@@ -12,6 +12,7 @@ type cliConfig struct {
 	FirmwareUpdateTopic string
 	StatusTopic         string
 	MdbPath             string
+	FirmwarePath        string
 	HttpHost            string
 	HttpPort            string
 	HttpUpdateEndpoint  string
@@ -26,6 +27,7 @@ func loadCliConfig() cliConfig {
 		FirmwareUpdateTopic: utils.GetEnvOrPanic("MQTT_FIRMWARE_UPDATE_TOPIC"),
 		StatusTopic:         utils.GetEnvOrPanic("MQTT_STATUS_TOPIC"),
 		MdbPath:             utils.GetEnvOrPanic("MDB_FILEPATH"),
+		FirmwarePath:        utils.GetEnvOrPanic("FIRMWARE_FILEPATH"),
 		HttpHost:            utils.GetEnvOrPanic("HTTP_SERVER_HOST"),
 		HttpPort:            utils.GetEnvOrPanic("HTTP_SERVER_PORT"),
 		HttpUpdateEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
@@ -62,7 +64,6 @@ func main() {
 		{"ls", "list all available commands"},
 		{"upd", "convert local MDB to CSV and upload to server"},
 		{"sfwe", "send firmware enable command to all stations"},
-		{"sfwd", "send firmware disable command to all stations"},
 		{"sw", "send wake command to all stations"},
 		{"ss", "send sleep command to all stations"},
 		{"e", "exit"},
@@ -91,9 +92,19 @@ func main() {
 				log.Printf("Update failed: %v\n", err)
 			}
 		case "sfwe":
-			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, "start", false)
-		case "sfwd":
-			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, "stop", false)
+			downloadUrl, waitAndStop, err := commands.FirmwareUpdateServer(cfg.FirmwarePath, cfg.TlsCertPath, cfg.TlsKeyPath)
+			if err != nil {
+				log.Printf("Failed to start server: %v\n", err)
+				continue
+			}
+
+			log.Printf("Broadcasting update command...")
+			commandPayload := fmt.Sprintf("%s", downloadUrl)
+			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, commandPayload, false)
+
+			waitAndStop()
+
+			fmt.Println("Update sequence complete.")
 		case "sw":
 			commands.SendCommand(mqttClient, cfg.StatusTopic, "wake", true)
 		case "ss":
