@@ -2,8 +2,8 @@
 set -e
 
 
-DB_USER_VAL="client"
-DB_PASS_VAL="securepass" # needed for init
+DB_USER_VAL="fill"
+DB_PASS_VAL="fill" # needed for init
 
 if [[ "$DB_USER_VAL" == "fill" || "$DB_PASS_VAL" == "fill" ]]; then
     echo "Error: Please update the DB_USER_VAL and DB_PASS_VAL in the script."
@@ -36,11 +36,7 @@ CLIENT_CRT="$CERTS_DIR/client.crt"
 EXT_FILE="$CERTS_DIR/v3.ext"
 MOSQUITTO_CONF="$MOSQUITTO_CONF_DIR/mosquitto.conf"
 
-# secret names
-SECRET_SERVER_KEY="server_key"
-SECRET_CLIENT_KEY="client_key"
-SECRET_DB_USER="db_user"
-SECRET_DB_PASS="db_password"
+SECURE_VAULT_VOLUME="secure_vault"
 
 echo "gen prime256v1 certificates..."
 
@@ -83,18 +79,21 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateseri
 openssl x509 -req -in "$CLIENT_CSR" -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
   -out "$CLIENT_CRT" -days 365 -sha256
 
-echo "re-creating podman secrets..."
+echo "populating secure_vault volume..."
 
-# remove old secrets if they exist
-podman secret rm "$SECRET_SERVER_KEY" "$SECRET_CLIENT_KEY" "$SECRET_DB_USER" "$SECRET_DB_PASS" 2>/dev/null || true
+podman volume create "$SECURE_VAULT_VOLUME" >/dev/null
 
-# create cert secrets
-podman secret create "$SECRET_SERVER_KEY" "$SERVER_KEY"
-podman secret create "$SECRET_CLIENT_KEY" "$CLIENT_KEY"
-
-# create db auth secrets
-echo -n "$DB_USER_VAL" | podman secret create "$SECRET_DB_USER" -
-echo -n "$DB_PASS_VAL" | podman secret create "$SECRET_DB_PASS" -
+podman run --rm \
+  -v "$SECURE_VAULT_VOLUME":/vault \
+  -v "$(pwd)/$CERTS_DIR":/source:ro \
+  alpine:latest \
+  /bin/sh -c "set -e; \
+    cp /source/server.key /vault/server_key; \
+    cp /source/client.key /vault/client_key; \
+    printf '%s' \"$DB_USER_VAL\" > /vault/db_user; \
+    printf '%s' \"$DB_PASS_VAL\" > /vault/db_password; \
+    chown -R 1000:1000 /vault; \
+    chmod -R 0400 /vault/*"
 
 echo "gen mosquitto.conf..."
 cat > "$MOSQUITTO_CONF" << EOF
@@ -102,7 +101,7 @@ listener 8883
 
 # TLS conf
 certfile /mosquitto/$CERTS_DIR/server.crt
-keyfile /run/secrets/$SECRET_SERVER_KEY
+keyfile /run/secrets/server_key
 cafile /mosquitto/$CERTS_DIR/ca.crt
 
 # Client auth

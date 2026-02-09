@@ -7,24 +7,13 @@ services:
       args:
         - POSTGRES_IMAGE=${POSTGRES_IMAGE}
     restart: unless-stopped
-    secrets:
-      - source: server_key
-        uid: "0"
-        gid: "1000"
-        mode: 440
-      - source: db_user
-        uid: "0"
-        gid: "1000"
-        mode: 440
-      - source: db_password
-        uid: "0"
-        gid: "1000"
-        mode: 440
+    user: "1000"
     env_file:
       - .env
     volumes:
       - postgres_data:/var/lib/postgresql
       - shared_data:/tmp
+      - secure_vault:/run/secrets:ro
       - ./certs/server.crt:/certs/server.crt:ro
       - ./certs/ca.crt:/certs/ca.crt:ro
       - ./postgresql/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
@@ -46,11 +35,7 @@ services:
       args:
         - MOSQUITTO_IMAGE=${MOSQUITTO_IMAGE}
     restart: unless-stopped
-    secrets:
-      - source: server_key
-        uid: "0"
-        gid: "1000"
-        mode: 440
+    user: "1000"
     env_file:
       - .env
     ports:
@@ -59,6 +44,7 @@ services:
       - ./mosquitto:/mosquitto/config
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
+      - secure_vault:/run/secrets:ro
       - ./certs/server.crt:/mosquitto/certs/server.crt:ro
       - ./certs/ca.crt:/mosquitto/certs/ca.crt:ro
     networks:
@@ -75,24 +61,16 @@ services:
         - TARGETARCH=${TARGETARCH}
         - WORKDIR=${WORKDIR}
     restart: unless-stopped
+    user: "1000"
     depends_on:
       - postgres_db
-    secrets:
-      - server_key
-      - source: client_key
-        uid: "1000"
-        gid: "1000"
-        mode: 400
-      - source: db_user
-        uid: "1000"
-        gid: "1000"
-        mode: 400
     env_file:
       - .env
     ports:
       - "${HTTP_SERVER_PORT}:${HTTP_SERVER_PORT}"
     volumes:
       - shared_data:/tmp
+      - secure_vault:/run/secrets:ro
       - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
       - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
       - ./certs/client.crt:${WORKDIR}/certs/client.crt:ro
@@ -110,22 +88,14 @@ services:
         - TARGETARCH=${TARGETARCH}
         - WORKDIR=${WORKDIR}
     restart: unless-stopped
+    user: "1000"
     depends_on:
       - postgres_db
       - mosquitto_broker
-    secrets:
-      - server_key
-      - source: client_key
-        uid: "1000"
-        gid: "1000"
-        mode: 400
-      - source: db_user
-        uid: "1000"
-        gid: "1000"
-        mode: 400
     env_file:
       - .env
     volumes:
+      - secure_vault:/run/secrets:ro
       - ./certs/server.crt:${WORKDIR}/certs/server.crt:ro
       - ./certs/ca.crt:${WORKDIR}/certs/ca.crt:ro
       - ./certs/client.crt:${WORKDIR}/certs/client.crt:ro
@@ -145,13 +115,9 @@ services:
     stdin_open: true
     tty: true
     network_mode: host
-    secrets:
-      - server_key
-      - source: client_key
-        uid: "1000"
-        gid: "1000"
-        mode: 400
+    user: "1000"
     volumes:
+      - secure_vault:/run/secrets:ro
       - ./certs:${WORKDIR}/certs:ro
       - ${HOST_MDB_DIR}:${CONTAINER_MDB_DIR}:ro
       - ${HOST_FIRMWARE_DIR}:${CONTAINER_FIRMWARE_DIR}:ro
@@ -162,15 +128,6 @@ services:
       - HTTP_SERVER_HOST=${HTTP_SERVER_IP}
       - MDB_FILEPATH=${CONTAINER_MDB_DIR}/${MDB_FILENAME}
       - FIRMWARE_FILEPATH=${CONTAINER_FIRMWARE_DIR}/${FIRMWARE_FILENAME}
-secrets:
-  server_key:
-    external: true
-  client_key:
-    external: true
-  db_user:
-    external: true
-  db_password:
-    external: true
 
 networks:
   MOB_network:
@@ -180,3 +137,5 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   shared_data:
+  secure_vault:
+    external: true
