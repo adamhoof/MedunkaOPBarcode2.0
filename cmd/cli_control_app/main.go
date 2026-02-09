@@ -9,32 +9,30 @@ import (
 )
 
 type cliConfig struct {
-	FirmwareUpdateTopic string
-	StatusTopic         string
-	MdbPath             string
-	FirmwarePath        string
-	HttpHost            string
-	HttpPort            string
-	HttpUpdateEndpoint  string
-	HttpStatusEndpoint  string
-	TlsCaPath           string
-	TlsCertPath         string
-	TlsKeyPath          string
+	ControlTopic       string
+	MdbPath            string
+	FirmwarePath       string
+	HttpHost           string
+	HttpPort           string
+	HttpUpdateEndpoint string
+	HttpStatusEndpoint string
+	TlsCaPath          string
+	TlsCertPath        string
+	TlsKeyPath         string
 }
 
 func loadCliConfig() cliConfig {
 	return cliConfig{
-		FirmwareUpdateTopic: utils.GetEnvOrPanic("MQTT_FIRMWARE_UPDATE_TOPIC"),
-		StatusTopic:         utils.GetEnvOrPanic("MQTT_STATUS_TOPIC"),
-		MdbPath:             utils.GetEnvOrPanic("MDB_FILEPATH"),
-		FirmwarePath:        utils.GetEnvOrPanic("FIRMWARE_FILEPATH"),
-		HttpHost:            utils.GetEnvOrPanic("HTTP_SERVER_HOST"),
-		HttpPort:            utils.GetEnvOrPanic("HTTP_SERVER_PORT"),
-		HttpUpdateEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
-		HttpStatusEndpoint:  utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"),
-		TlsCaPath:           utils.GetEnvOrPanic("TLS_CA_PATH"),
-		TlsCertPath:         utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
-		TlsKeyPath:          utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
+		ControlTopic:       utils.GetEnvOrPanic("MQTT_CONTROL_TOPIC"),
+		MdbPath:            utils.GetEnvOrPanic("MDB_FILEPATH"),
+		FirmwarePath:       utils.GetEnvOrPanic("FIRMWARE_FILEPATH"),
+		HttpHost:           utils.GetEnvOrPanic("HTTP_SERVER_HOST"),
+		HttpPort:           utils.GetEnvOrPanic("HTTP_SERVER_PORT"),
+		HttpUpdateEndpoint: utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
+		HttpStatusEndpoint: utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"),
+		TlsCaPath:          utils.GetEnvOrPanic("TLS_CA_PATH"),
+		TlsCertPath:        utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
+		TlsKeyPath:         utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
 	}
 }
 
@@ -63,9 +61,10 @@ func main() {
 	availableCommands := []Command{
 		{"ls", "list all available commands"},
 		{"upd", "convert local MDB to CSV and upload to server"},
-		{"sfwe", "send firmware enable command to all stations"},
+		{"sfw", "send firmware enable command to all stations"},
 		{"sw", "send wake command to all stations"},
 		{"ss", "send sleep command to all stations"},
+		{"scfs", "send conf_scanner command to all stations"},
 		{"e", "exit"},
 	}
 
@@ -91,7 +90,7 @@ func main() {
 			if err := commands.DatabaseUpdate(httpClient, cfg.MdbPath, cfg.HttpHost, cfg.HttpPort, cfg.HttpUpdateEndpoint, cfg.HttpStatusEndpoint); err != nil {
 				log.Printf("Update failed: %v\n", err)
 			}
-		case "sfwe":
+		case "sfw":
 			downloadUrl, waitAndStop, err := commands.FirmwareUpdateServer(cfg.FirmwarePath, cfg.TlsCertPath, cfg.TlsKeyPath)
 			if err != nil {
 				log.Printf("Failed to start server: %v\n", err)
@@ -100,15 +99,17 @@ func main() {
 
 			log.Printf("Broadcasting update command...")
 			commandPayload := fmt.Sprintf("%s", downloadUrl)
-			commands.SendCommand(mqttClient, cfg.FirmwareUpdateTopic, commandPayload, false)
+			commands.SendCommand(mqttClient, cfg.ControlTopic, commandPayload, false)
 
 			waitAndStop()
 
 			fmt.Println("Update sequence complete.")
 		case "sw":
-			commands.SendCommand(mqttClient, cfg.StatusTopic, "wake", true)
+			commands.SendCommand(mqttClient, cfg.ControlTopic, "wake", true)
 		case "ss":
-			commands.SendCommand(mqttClient, cfg.StatusTopic, "sleep", true)
+			commands.SendCommand(mqttClient, cfg.ControlTopic, "sleep", true)
+		case "scfs":
+			commands.SendCommand(mqttClient, cfg.ControlTopic, "conf_scanner", false)
 		case "e":
 			return
 		default:
