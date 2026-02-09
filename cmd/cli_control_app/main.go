@@ -17,8 +17,12 @@ type cliConfig struct {
 	HttpUpdateEndpoint string
 	HttpStatusEndpoint string
 	TlsCaPath          string
-	TlsCertPath        string
-	TlsKeyPath         string
+	TlsClientCertPath  string
+	TlsClientKeyPath   string
+	TlsServerCertPath  string
+	TlsServerKeyPath   string
+	FirmwareServerHost string
+	FirmwareServerPort string
 }
 
 func loadCliConfig() cliConfig {
@@ -31,8 +35,12 @@ func loadCliConfig() cliConfig {
 		HttpUpdateEndpoint: utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_ENDPOINT"),
 		HttpStatusEndpoint: utils.GetEnvOrPanic("HTTP_SERVER_UPDATE_STATUS_ENDPOINT"),
 		TlsCaPath:          utils.GetEnvOrPanic("TLS_CA_PATH"),
-		TlsCertPath:        utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
-		TlsKeyPath:         utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
+		TlsClientCertPath:  utils.GetEnvOrPanic("TLS_CLIENT_CERT_PATH"),
+		TlsClientKeyPath:   utils.GetEnvOrPanic("TLS_CLIENT_KEY_PATH"),
+		TlsServerCertPath:  utils.GetEnvOrPanic("TLS_SERVER_CERT_PATH"),
+		TlsServerKeyPath:   utils.GetEnvOrPanic("TLS_SERVER_KEY_PATH"),
+		FirmwareServerHost: utils.GetEnvOrPanic("FIRMWARE_SERVER_HOST"),
+		FirmwareServerPort: utils.GetEnvOrPanic("FIRMWARE_SERVER_PORT"),
 	}
 }
 
@@ -56,7 +64,7 @@ func main() {
 
 	log.Println("CLI App Ready. Connected to MQTT.")
 
-	httpClient := utils.CreateSecureHTTPClient(cfg.TlsCaPath, cfg.TlsCertPath, cfg.TlsKeyPath)
+	httpClient := utils.CreateSecureHTTPClient(cfg.TlsCaPath, cfg.TlsClientCertPath, cfg.TlsClientKeyPath)
 
 	availableCommands := []Command{
 		{"ls", "list all available commands"},
@@ -91,7 +99,7 @@ func main() {
 				log.Printf("Update failed: %v\n", err)
 			}
 		case "sfw":
-			downloadUrl, waitAndStop, err := commands.FirmwareUpdateServer(cfg.FirmwarePath, cfg.TlsCertPath, cfg.TlsKeyPath)
+			downloadUrl, waitAndStop, err := commands.FirmwareUpdateServer(cfg.FirmwarePath, cfg.TlsServerCertPath, cfg.TlsServerKeyPath, cfg.FirmwareServerHost, cfg.FirmwareServerPort)
 			if err != nil {
 				log.Printf("Failed to start server: %v\n", err)
 				continue

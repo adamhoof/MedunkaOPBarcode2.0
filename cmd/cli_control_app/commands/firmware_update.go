@@ -5,24 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"time"
 )
 
-func FirmwareUpdateServer(firmwarePath, certPath, keyPath string) (string, func(), error) {
+func FirmwareUpdateServer(firmwarePath, certPath, keyPath, hostIP, port string) (string, func(), error) {
 	if _, err := os.Stat(firmwarePath); os.IsNotExist(err) {
 		return "", nil, fmt.Errorf("firmware file not found at path: %s", firmwarePath)
 	}
 
-	ip, err := getLocalIP()
-	if err != nil {
-		return "", nil, fmt.Errorf("could not determine local IP: %v", err)
-	}
-
-	port := "9000"
-	serverAddr := fmt.Sprintf("%s:%s", ip, port)
+	serverAddr := fmt.Sprintf("%s:%s", hostIP, port)
 	downloadUrl := fmt.Sprintf("https://%s/fw", serverAddr)
 
 	log.Printf("Starting temporary firmware server at %s", downloadUrl)
@@ -73,14 +66,4 @@ func FirmwareUpdateServer(firmwarePath, certPath, keyPath string) (string, func(
 	}
 
 	return downloadUrl, waitAndStop, nil
-}
-
-func getLocalIP() (string, error) {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP.String(), nil
 }
